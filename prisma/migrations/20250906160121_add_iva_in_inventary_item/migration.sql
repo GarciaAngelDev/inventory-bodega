@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "public"."InventaryItem" ADD COLUMN     "iva" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "ivaPercentage" INTEGER NOT NULL DEFAULT 0;

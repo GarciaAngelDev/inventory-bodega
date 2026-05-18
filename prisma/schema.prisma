@@ -1,0 +1,313 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER
+  ADMIN
+  AUXILIAR
+  INVENTORY
+  SELLER
+  PRODUCER
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductType {
+  PRODUCT
+  RAWMATERIAL
+}
+
+enum InventaryStatus {
+  STOP
+  PENDING
+  PREPARED
+  SOLD
+  CANCELLED
+}
+
+enum InventaryItemStatus {
+  STOP
+  AVAILABLE
+  OUT_OF_STOCK
+  RESERVED
+  EXPIRED
+  CANCELLED
+}
+
+enum RateType {
+  OFICIAL
+  PARALELO
+  CUSTOM
+}
+
+enum ProducerStatus {
+  IN_PRODUCTION
+  PAUSED
+  CANCELLED
+  FINISHED
+  PRODUCED
+}
+
+enum ProducerDetailStatus {
+  IN_PRODUCTION
+  PAUSED
+  CANCELLED
+  FINISHED
+  PRODUCED
+}
+
+enum SaleStatus {
+  RETURNED
+  CANCELLED
+  RESERVED
+  SOLD
+}
+
+enum SaleDetailStatus {
+  RETURNED
+  CANCELLED
+  RESERVED
+  SOLD
+}
+
+enum InventaryType {
+  INTERNAL
+  SALE
+}
+
+enum MeasureUnit {
+  //peso
+  KG //kilogramos
+  G //gramos
+  //volumen
+  L //litros
+  ML //mililitros
+  // Unidad
+  //UND //unidad
+}
+
+model User {
+  id        String      @id @default(uuid())
+  name      String
+  email     String      @unique
+  password  String
+  role      UserRole    @default(AUXILIAR)
+  status    Status      @default(ACTIVE)
+  inventary Inventary[]
+  sales     Sale[]
+  producer  Producer[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Inventary {
+  id             String          @id @default(uuid())
+  name           String
+  invoiceNumber  String?
+  providerName   String?
+  userId         String
+  user           User            @relation(fields: [userId], references: [id])
+  inventaryItems InventaryItem[] @relation("InventaryToInventaryItem")
+  status         InventaryStatus @default(PENDING)
+  type           InventaryType   @default(SALE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model InventaryItem {
+  id                      String              @id @default(uuid())
+  retailPrice             Float               @default(0)
+  wholesalePrice          Float               @default(0)
+  stock                   Int                 @default(0)
+  initialStock            Int                 @default(0)
+  measureUnitValue        Float               @default(0)
+  initialMeasureUnitValue Float               @default(0)
+  ivaPercentage           Int                 @default(0)
+  type                    InventaryType
+  status                  InventaryItemStatus @default(AVAILABLE)
+  inventaryId             String
+  inventary               Inventary           @relation("InventaryToInventaryItem", fields: [inventaryId], references: [id], onDelete: Cascade)
+  productId               String
+  product                 Product             @relation(fields: [productId], references: [id])
+  saleDetails             SaleDetail[]
+  producerDetails         ProducerDetail[]
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+}
+
+model Producer {
+  id        String           @id @default(uuid())
+  status    ProducerStatus   @default(PRODUCED)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  details   ProducerDetail[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model ProducerDetail {
+  id               String               @id @default(uuid())
+  quantity         Int                  @default(0)
+  measureUnitValue Float                @default(0)
+  inventaryItems   InventaryItem[]
+  producerId       String
+  producer         Producer             @relation(fields: [producerId], references: [id], onDelete: Cascade)
+  status           ProducerDetailStatus @default(PRODUCED)
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  address   String?
+  identity  String?  @unique
+  sales     Sale[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sale {
+  id            String       @id @default(uuid())
+  status        SaleStatus   @default(SOLD)
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  details       SaleDetail[] @relation("SaleToSaleDetail")
+  enableIva     Boolean      @default(false)
+  ivaPercentage Int          @default(0)
+  discount      Float        @default(0)
+  client        Client?      @relation(fields: [clientId], references: [id])
+  clientId      String?
+  deliveryDate  DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model SaleDetail {
+  id               String           @id @default(uuid())
+  retailPrice      Float            @default(0)
+  wholesalePrice   Float            @default(0)
+  isRetailPrice    Boolean          @default(true)
+  quantity         Int              @default(0)
+  measureUnitValue Float            @default(0)
+  iva              Float            @default(0)
+  ivaPercentage    Int              @default(0)
+  status           SaleDetailStatus @default(SOLD)
+  inventaryItems   InventaryItem[]
+  inventaryType    InventaryType    @default(SALE)
+  saleId           String
+  sale             Sale             @relation("SaleToSaleDetail", fields: [saleId], references: [id], onDelete: Cascade)
+}
+
+model Combo {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  price       Float       @default(0)
+  discount    Float       @default(0)
+  count       Int         @default(0)
+  comboItems  ComboItem[]
+}
+
+model ComboItem {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(0)
+  Combo     Combo?  @relation(fields: [comboId], references: [id])
+  comboId   String?
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  slug        String?   @unique
+  status      Status    @default(ACTIVE)
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id               String                   @id @default(uuid())
+  name             String                   @unique
+  refCode          String?                  @unique
+  slug             String?                  @unique
+  description      String?
+  brand            String?
+  type             ProductType              @default(PRODUCT)
+  status           Status?                  @default(ACTIVE)
+  minStock         Int                      @default(0)
+  maxStock         Int                      @default(0)
+  images           String[]
+  tags             String[]
+  measureUnitValue Float?
+  category         Category                 @relation(fields: [categoryId], references: [id])
+  categoryId       String
+  characteristics  ProductCharacteristics[] @relation("ProductToCharacteristics")
+  inventaryItems   InventaryItem[]
+  inputProductId   String?
+  inputProduct     InputProduct?            @relation(fields: [inputProductId], references: [id])
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  ComboItem        ComboItem[]
+}
+
+model ProductCharacteristics {
+  id        String                       @id @default(uuid())
+  name      String
+  items     ProductCharacteristicsItem[]
+  product   Product                      @relation("ProductToCharacteristics", fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+}
+
+model ProductCharacteristicsItem {
+  id                       String                 @id @default(uuid())
+  value                    String
+  productCharacteristics   ProductCharacteristics @relation(fields: [productCharacteristicsId], references: [id], onDelete: Cascade)
+  productCharacteristicsId String
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+}
+
+model Setting {
+  id         String   @id @default(uuid())
+  enableRate Boolean  @default(false)
+  rateType   RateType @default(OFICIAL)
+  rateCustom Float    @default(0)
+  enableIva  Boolean  @default(false)
+  iva        Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model InputProduct {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String?
+  measureUnit MeasureUnit @default(KG)
+  minQuantity Float       @default(0)
+  maxQuantity Float       @default(0)
+  status      Status      @default(ACTIVE)
+  products    Product[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
