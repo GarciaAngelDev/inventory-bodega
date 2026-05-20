@@ -31,15 +31,15 @@ export const useCreateSaleStore = create<CreateSaleStore>()(
       addSaleDetail: (detail) => set((state) => {
         // Check if product already exists in details
         const productExists = state.sale.details.some(d => d.productId === detail.productId);
-        
+
         if (productExists) {
           return state; // Return current state if product already exists
         }
-        
+
         return {
           sale: {
             ...state.sale,
-            details: [...state.sale.details, detail]
+            details: [detail, ...state.sale.details]
           }
         };
       }),
@@ -65,7 +65,7 @@ export const useCreateSaleStore = create<CreateSaleStore>()(
       })),
       resetSale: () => set({ sale: initialState }),
       isSubmitting: false,
-      setIsSubmitting: (isSubmitting) => set({ isSubmitting}),
+      setIsSubmitting: (isSubmitting) => set({ isSubmitting }),
     }),
     {
       name: 'create-sale-store',
@@ -78,16 +78,16 @@ export const useCreateSaleStore = create<CreateSaleStore>()(
 )
 
 export const useSaleStore = () => {
-  const { 
-    sale, 
+  const {
+    sale,
     setSale,
     addSaleDetail,
-    updateSaleDetail, 
-    removeSaleDetail, 
+    updateSaleDetail,
+    removeSaleDetail,
     removeAllSaleDetails,
-    isSubmitting, 
+    isSubmitting,
     setIsSubmitting,
-    resetSale 
+    resetSale
   } = useCreateSaleStore();
 
   return {
