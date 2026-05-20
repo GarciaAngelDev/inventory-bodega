@@ -93,10 +93,10 @@ const PageSalesContent = () => {
       // Determinar el tipo de inventario disponible para el producto
       const hasSaleInventory = product.inventoryItems.some(item => item.inventaryType === InventoryType.SALE);
       const hasInternalInventory = product.inventoryItems.some(item => item.inventaryType === InventoryType.INTERNAL);
-      
+
       // Establecer el tipo de inventario según disponibilidad
-      const inventaryType = !hasSaleInventory && hasInternalInventory 
-        ? InventoryType.INTERNAL 
+      const inventaryType = !hasSaleInventory && hasInternalInventory
+        ? InventoryType.INTERNAL
         : InventoryType.SALE;
 
       addSaleDetail({
@@ -116,6 +116,7 @@ const PageSalesContent = () => {
         inventaryType
       });
 
+      setSaleResponse(null);
       setSelectedProduct("");
       toast.success(`Se agregó ${product.product.name} al carrito`);
     } else {
@@ -127,7 +128,7 @@ const PageSalesContent = () => {
   const taxableAmount = calculateTaxableCreateSaleProducts(sale, availableProducts);
   const taxAmount = calculateTaxAmountCreateSale(sale, availableProducts);
   const totalMount = exemptAmount + taxableAmount + taxAmount;
-  const total = sale.discount && Number(sale.discount) > 0 ? totalMount - Number(sale.discount) : totalMount;
+  const total = sale.discount && Number(sale.discount) > 0 ? totalMount + Number(sale.discount) : totalMount;
 
   const handleProcessSale = async (status: SaleStatus, clientId?: string) => {
 
@@ -136,18 +137,18 @@ const PageSalesContent = () => {
       return;
     }
 
-    if (sale.discount && Number(sale.discount) > 0 && totalMount <= 0) {
-      toast.error("El descuento no puede dejar el total en negativo");
+    if (sale.discount && Number(sale.discount) < 0) {
+      toast.error("El recargo no puede ser negativo");
       return;
     }
-    
+
 
     // Validar que todos los productos tengan cantidades válidas
     for (const detail of sale.details) {
       const product = findProduct(detail.productId, availableProducts);
-      
+
       if (!product) continue;
-      
+
       if (product.inputProduct) {
         // Validar medida para productos de entrada
         if (detail.measureUnitValue === undefined || detail.measureUnitValue <= 0) {
@@ -216,82 +217,76 @@ const PageSalesContent = () => {
 
   return (
     <>
-      {
-        saleResponse && (
-          <SaleSummaryDialog
-            showSummary={showSummary}
-            setShowSummary={setShowSummary}
-            sale={saleResponse}
-          />
-        )
-      }
+      {/* SaleSummaryDialog is now rendered inline inside CartSales when empty */}
 
       <div className="space-y-3 md:space-y-6">
         <div className="sticky top-0 z-30 -mx-4 px-3 pt-1 pb-2 bg-background/95 backdrop-blur-sm border-b md:static md:z-auto md:mx-0 md:px-0 md:pt-0 md:pb-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
-        <div className="flex flex-col-reverse xs:flex-row justify-between items-end gap-2 md:gap-4">
-          <div className="space-y-2 md:space-y-4 w-full">
-            <div className="flex justify-between items-center gap-2">
-              <h1 className="text-base font-semibold md:text-2xl md:font-bold">Nueva venta</h1>
-              <Link href="/dashboard/ventas/historial" className="xs:hidden">
-                <Button
-                  size="sm"
-                  className="h-8 px-2.5 text-xs bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
-                >
-                  <ReceiptText className="size-3.5" />
-                  <span className="ml-1">Historial</span>
-                </Button>
-              </Link>
-            </div>
-            <div className="flex gap-1.5 xs:gap-4 items-center sm:items-end">
-              {getSettingQuery.isLoading ? (
-                <Skeleton className="w-[173.7px] h-9" />
-              ) : (
-                <div className="w-full md:max-w-[400px] flex-1 min-w-0">
-                  <Combobox
-                    modal
-                    className="[&_button]:h-9 [&_button]:text-sm"
-                    data={filteredAvailableProducts.map((available) => ({
-                      label: `${available.product.name} ${available.product.refCode && `(${available.product.refCode})`}`,
-                      value: available.product.id!,
-                      inventoryType: getInventoryType(available)
-                    }))}
-                    onValueChange={(value) => setSelectedProduct(value)}
-                    defaultValue={selectedProduct || ""}
-                    placeholder="Buscar producto..."
-                    inputLabel="Buscar producto por nombre o referencia"
-                    notFoundLabel="No se encontraron productos disponibles"
-                    disabled={getSettingQuery.isLoading || filteredAvailableProducts.length === 0}
-                  />
-                </div>
-              )}
+          <div className="flex flex-col-reverse xs:flex-row justify-between items-end gap-2 md:gap-4">
+            <div className="space-y-2 md:space-y-4 w-full">
+              <div className="flex justify-between items-center gap-2">
+                <Link href="/dashboard/inventario">
+                  <h1 className="text-base font-semibold md:text-2xl md:font-bold">Nueva venta</h1>
+                </Link>
+                <Link href="/dashboard/ventas/historial" className="xs:hidden">
+                  <Button
+                    size="sm"
+                    className="h-8 px-2.5 text-xs bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+                  >
+                    <ReceiptText className="size-3.5" />
+                    <span className="ml-1">Historial</span>
+                  </Button>
+                </Link>
+              </div>
+              <div className="flex gap-1.5 xs:gap-4 items-center sm:items-end">
+                {getSettingQuery.isLoading ? (
+                  <Skeleton className="w-[173.7px] h-9" />
+                ) : (
+                  <div className="w-full md:max-w-[400px] flex-1 min-w-0">
+                    <Combobox
+                      modal
+                      className="[&_button]:h-9 [&_button]:text-sm"
+                      data={filteredAvailableProducts.map((available) => ({
+                        label: `${available.product.name} ${available.product.refCode && `(${available.product.refCode})`}`,
+                        value: available.product.id!,
+                        inventoryType: getInventoryType(available)
+                      }))}
+                      onValueChange={(value) => setSelectedProduct(value)}
+                      defaultValue={selectedProduct || ""}
+                      placeholder="Buscar producto..."
+                      inputLabel="Buscar producto por nombre o referencia"
+                      notFoundLabel="No se encontraron productos disponibles"
+                      disabled={getSettingQuery.isLoading || filteredAvailableProducts.length === 0}
+                    />
+                  </div>
+                )}
 
-              <Button
-                onClick={handleAddProduct}
-                disabled={!selectedProduct || getSettingQuery.isLoading}
-                className="xs:hidden shrink-0 h-9 w-9 bg-blue-500 hover:bg-blue-600 text-white"
-                size="icon"
-              >
-                <Plus />
-              </Button>
-              <Button
-                onClick={handleAddProduct}
-                disabled={!selectedProduct || getSettingQuery.isLoading}
-                className="hidden xs:flex bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                <Plus />
-                <span>Agregar <span className="hidden sm:inline">al carrito</span></span>
-              </Button>
+                <Button
+                  onClick={handleAddProduct}
+                  disabled={!selectedProduct || getSettingQuery.isLoading}
+                  className="xs:hidden shrink-0 h-9 w-9 bg-blue-500 hover:bg-blue-600 text-white"
+                  size="icon"
+                >
+                  <Plus />
+                </Button>
+                <Button
+                  onClick={handleAddProduct}
+                  disabled={!selectedProduct || getSettingQuery.isLoading}
+                  className="hidden xs:flex bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  <Plus />
+                  <span>Agregar <span className="hidden sm:inline">al carrito</span></span>
+                </Button>
+              </div>
             </div>
+            <Link href="/dashboard/ventas/historial" className="hidden xs:block">
+              <Button
+                className="bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
+              >
+                <ReceiptText />
+                <span>Historial <span className="hidden sm:inline">de ventas</span></span>
+              </Button>
+            </Link>
           </div>
-          <Link href="/dashboard/ventas/historial" className="hidden xs:block">
-            <Button
-              className="bg-blue-500 hover:bg-blue-600 text-white cursor-pointer"
-            >
-              <ReceiptText />
-              <span>Historial <span className="hidden sm:inline">de ventas</span></span>
-            </Button>
-          </Link>
-        </div>
         </div>
 
         <CartSales
@@ -311,6 +306,8 @@ const PageSalesContent = () => {
           total={total}
           totalMount={totalMount}
           handleProcessSale={handleProcessSale}
+          saleResponse={saleResponse}
+          setSaleResponse={setSaleResponse}
         />
       </div>
     </>

@@ -17,6 +17,26 @@ export interface CriticalProduct {
   measureUnit?: string;
 }
 
+export interface SoldProduct {
+  id: string;
+  name: string;
+  quantity: number;
+  total: number;
+}
+
+export interface DashboardInventoryStatusDetail {
+  available: number;
+  lowStock: number;
+  outOfStock: number;
+  reserved: number;
+  total: number;
+}
+
+export interface DashboardInventoryStatus {
+  sale: DashboardInventoryStatusDetail;
+  internal: DashboardInventoryStatusDetail;
+}
+
 export interface DashboardData {
   sales: {
     exemptAmount: number;    // Monto exento (sin IVA)
@@ -38,4 +58,6 @@ export interface DashboardData {
     count: number;           // Cantidad de productos críticos
     products: CriticalProduct[]; // Lista de productos críticos
   };
+  soldProducts: SoldProduct[];
+  inventoryStatus: DashboardInventoryStatus;
 }

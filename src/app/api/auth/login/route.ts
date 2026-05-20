@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(user, {
       headers: {
-        'Set-Cookie': `token=${token}; Path=/; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Lax; Max-Age=${60 * 60 * 24}`
+        'Set-Cookie': `token=${token}; Path=/; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Lax; Max-Age=${60 * 60 * 24 * 31}`
       }
     });
   } catch (error) {

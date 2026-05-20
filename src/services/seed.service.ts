@@ -3,7 +3,7 @@ import { UserRole } from "@/types";
 
 export const createSuperUser = async () => {
   try {
-    
+
     const existSuperUser = await prisma.user.findFirst({
       where: {
         role: UserRole.SUPER,
@@ -17,8 +17,8 @@ export const createSuperUser = async () => {
     await prisma.user.create({
       data: {
         name: 'Super Administrador',
-        email: 'super@email.com',
-        password: 'Ed123456789*',
+        email: 'super@gmail.com',
+        password: 'An26225916@',
         role: UserRole.SUPER
       },
     });

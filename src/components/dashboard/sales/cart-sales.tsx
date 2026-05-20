@@ -11,7 +11,8 @@ import SaleTable from "./sale-table";
 
 import { calculateCreateSaleSubtotal } from "@/lib/sales";
 import { formatPrice } from "@/lib/format-price";
-import { AvaliableProduct, ClientFetch, CreateClient, CreateSaleData, CreateSaleDetailData, SaleStatus, Setting } from "@/types";
+import { AvaliableProduct, ClientFetch, CreateClient, CreateSaleData, CreateSaleDetailData, SaleStatus, Setting, SaleFetch } from "@/types";
+import SaleSummaryDialog from "./sale-summary-dialog";
 import SaleCardDetail from "./sale-card-detail";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -46,9 +47,11 @@ interface CartSalesProps {
   taxAmount: number
   total: number
   totalMount: number
+  saleResponse?: SaleFetch | null
+  setSaleResponse?: (response: SaleFetch | null) => void
 }
 
-const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, updateSaleDetail, removeSaleDetail, setting, settingLoading, submitting, rate, exemptAmount, taxableAmount, taxAmount, total, totalMount, handleProcessSale }: CartSalesProps) => {
+const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, updateSaleDetail, removeSaleDetail, setting, settingLoading, submitting, rate, exemptAmount, taxableAmount, taxAmount, total, totalMount, handleProcessSale, saleResponse, setSaleResponse }: CartSalesProps) => {
 
   const [openClientDialog, setOpenClientDialog] = useState(false);
   const [selectedClient, setSelectedClient] = useState("");
@@ -97,7 +100,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
 
   const handleDiscountChange = (value: number | undefined) => {
     const newValue = value === undefined ? 0 : value;
-    if (newValue >= 0 && newValue <= totalMount) {
+    if (newValue >= 0) {
       setSale({ ...sale, discount: newValue });
     }
   };
@@ -161,7 +164,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
 
   const displayTotal = setting.enableIva
     ? total
-    : calculateCreateSaleSubtotal(sale, availableProducts) - (sale.discount || 0);
+    : calculateCreateSaleSubtotal(sale, availableProducts) + (sale.discount || 0);
 
   const mobileCheckoutBar = (
     <div className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t bg-background shadow-[0_-4px_24px_rgba(0,0,0,0.1)]">
@@ -205,7 +208,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
               </>
             )}
             <div className="flex justify-between">
-              <span>Descuento</span>
+              <span>Recargo</span>
               <span>{formatPrice({ price: sale.discount || 0, country: { currency: "USD", locale: "en-US" } })}</span>
             </div>
           </div>
@@ -241,7 +244,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
             step="0.01"
             min="0"
             className="h-9 w-full pl-7 text-sm"
-            placeholder="Descuento"
+            placeholder="Recargo"
             value={sale.discount || ''}
             onChange={(e) => {
               const value = parseFloat(e.target.value);
@@ -249,8 +252,8 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
                 handleDiscountChange(0);
                 return;
               }
-              if (value > totalMount) {
-                toast.error("El descuento no puede ser mayor que el total");
+              if (value < 0) {
+                toast.error("El recargo no puede ser negativo");
                 return;
               }
               handleDiscountChange(value);
@@ -436,30 +439,40 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
         </DialogContent>
       </Dialog>
       <div className="border rounded-lg overflow-visible md:overflow-hidden">
-        <div className="flex items-center justify-between gap-2 border-b px-3 py-2 md:p-4 md:flex-col md:items-stretch">
-          <div className="flex items-baseline gap-2 min-w-0 md:block">
-            <h2 className="text-sm font-semibold md:text-lg">Carrito</h2>
-            <span className="text-[11px] text-muted-foreground md:text-sm">
-              {sale.details.length} {sale.details.length === 1 ? 'ítem' : 'ítems'}
-            </span>
+        {!saleResponse && (
+          <div className="flex items-center justify-between gap-2 border-b px-3 py-2 md:p-4 md:flex-col md:items-stretch">
+            <div className="flex items-baseline gap-2 min-w-0 md:block">
+              <h2 className="text-sm font-semibold md:text-lg">Carrito</h2>
+              <span className="text-[11px] text-muted-foreground md:text-sm">
+                {sale.details.length} {sale.details.length === 1 ? 'ítem' : 'ítems'}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={removeAllSaleDetails}
+              disabled={sale.details.length === 0}
+              className="h-7 px-2 text-xs shrink-0 md:h-9 cursor-pointer"
+            >
+              <ListX className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-1" />
+              Vaciar
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={removeAllSaleDetails}
-            disabled={sale.details.length === 0}
-            className="h-7 px-2 text-xs shrink-0 md:h-9 cursor-pointer"
-          >
-            <ListX className="h-3.5 w-3.5 md:h-4 md:w-4 md:mr-1" />
-            Vaciar
-          </Button>
-        </div>
+        )}
 
         {sale.details.length === 0 ? (
-          <div className="py-6 px-4 text-center text-muted-foreground md:py-8">
-            <p className="text-sm">Carrito vacío</p>
-            <p className="text-xs mt-0.5">Busca y agrega productos</p>
-          </div>
+          saleResponse ? (
+            <SaleSummaryDialog
+              sale={saleResponse}
+              inline
+              onClose={() => setSaleResponse && setSaleResponse(null)}
+            />
+          ) : (
+            <div className="py-6 px-4 text-center text-muted-foreground md:py-8">
+              <p className="text-sm">Carrito vacío</p>
+              <p className="text-xs mt-0.5">Busca y agrega productos</p>
+            </div>
+          )
         ) : (
           <div>
             <div className="overflow-x-auto hidden md:block">
@@ -486,7 +499,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
               <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="flex flex-col xs:items-end">
                   <div className="flex flex-col gap-2">
-                    <Label>Descuento</Label>
+                    <Label>Recargo</Label>
                     <div className="relative">
                       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                       <Input
@@ -502,8 +515,8 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
                             handleDiscountChange(0);
                             return;
                           }
-                          if (value > totalMount) {
-                            toast.error("El descuento no puede ser mayor que el total");
+                          if (value < 0) {
+                            toast.error("El recargo no puede ser negativo");
                             return;
                           }
                           handleDiscountChange(value);
@@ -561,7 +574,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
                   }
 
                   <div className="flex justify-between gap-2 border-t pt-2">
-                    <span>Descuento</span>
+                    <span>Recargo</span>
                     <div className="flex gap-4 items-center">
                       <span>{formatPrice({
                         price: sale.discount || 0,
@@ -578,7 +591,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
                           <Skeleton className="w-20 h-5" />
                         ) : (
                           <span>{formatPrice({
-                            price: setting.enableIva ? total : calculateCreateSaleSubtotal(sale, availableProducts) - (sale.discount || 0),
+                            price: setting.enableIva ? total : calculateCreateSaleSubtotal(sale, availableProducts) + (sale.discount || 0),
                             country: { currency: "USD", locale: "en-US" }
                           })}</span>
                         )
@@ -594,7 +607,7 @@ const CartSales = ({ availableProducts, sale, setSale, removeAllSaleDetails, upd
                         ) : (
                           (setting.enableRate || setting.rateCustom > 0) && (
                             <ShowPrice
-                              price={setting.enableIva ? total : calculateCreateSaleSubtotal(sale, availableProducts) - (sale.discount || 0)}
+                              price={setting.enableIva ? total : calculateCreateSaleSubtotal(sale, availableProducts) + (sale.discount || 0)}
                               rate={rate}
                               settingData={setting}
                               className="text-lg"

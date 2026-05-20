@@ -5,7 +5,7 @@ import { DateRange } from "react-day-picker";
 import DashboardHeader from "./dashboard-header";
 import KpiCards from "./kpi-cards";
 import { formatPrice } from "@/lib/format-price";
-import SaleChart from "./sale-chart";
+import TodaySoldProducts from "./today-sold-products";
 import InventoryChart from "./inventory-chart";
 import { getDashboardByDateOrDateRange } from "@/actions/dashboard.action";
 import { DashboardData } from "@/types/dashboard";
@@ -104,9 +104,9 @@ const DashboardPage = () => {
         }
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 mt-4">
-        <SaleChart />
-        <InventoryChart />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <TodaySoldProducts soldProducts={dashboardData?.soldProducts || []} loading={loading} />
+        <InventoryChart data={dashboardData?.inventoryStatus} loading={loading} />
       </div>
     </div>
   );

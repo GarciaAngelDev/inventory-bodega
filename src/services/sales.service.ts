@@ -307,7 +307,7 @@ export const getAllSales = async ({ user, limit = 10, offset = 0, query = '' }: 
           : detail.isRetailPrice ? detail.retailPrice * detail.quantity : detail.wholesalePrice * detail.quantity;
         return detailSum + subtotal + detail.iva;
       }, 0);
-      return sum + saleTotal;
+      return sum + saleTotal + (sale.discount || 0);
     }, 0);
 
     // Calcular total de ventas
@@ -326,7 +326,7 @@ export const getAllSales = async ({ user, limit = 10, offset = 0, query = '' }: 
           : detail.isRetailPrice ? detail.retailPrice * detail.quantity : detail.wholesalePrice * detail.quantity;
         return detailSum + subtotal + detail.iva;
       }, 0);
-      return sum + saleTotal;
+      return sum + saleTotal + (sale.discount || 0);
     }, 0);
 
     return {
@@ -724,7 +724,7 @@ export const getSellersDailySales = async (limit = 10, offset = 0) => {
               : detail.isRetailPrice ? detail.retailPrice * detail.quantity : detail.wholesalePrice * detail.quantity;
             return detailSum + subtotal + detail.iva;
           }, 0);
-          return sum + saleTotal;
+          return sum + saleTotal + (sale.discount || 0);
         }, 0);
 
         // Sumar al total general
@@ -744,7 +744,7 @@ export const getSellersDailySales = async (limit = 10, offset = 0) => {
                   : detail.isRetailPrice ? detail.retailPrice * detail.measureUnitValue! : detail.wholesalePrice * detail.measureUnitValue!
                 : detail.isRetailPrice ? detail.retailPrice * detail.quantity : detail.wholesalePrice * detail.quantity;
               return sum + subtotal + detail.iva;
-            }, 0),
+            }, 0) + (sale.discount || 0),
             status: sale.status as any,
             details: sale.details.length,
           }

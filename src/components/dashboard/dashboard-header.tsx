@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import { DatePickerWithRange } from "@/components/common/date-picker-with-range";
+import Link from "next/link";
 
 interface DashboardHeaderProps {
   dateRange: DateRange | undefined
@@ -17,7 +18,9 @@ const DashboardHeader = ({ dateRange, setDateRange, resetDashboardData }: Dashbo
     <Card className="px-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-balance">Dashboard de Análisis</h1>
+          <Link href="/dashboard/ventas">
+            <h1 className="text-3xl font-bold text-balance">Dashboard de Análisis</h1>
+          </Link>
           <p className="text-muted-foreground mt-1">Gestión integral de inventario, ventas y producción</p>
         </div>
 

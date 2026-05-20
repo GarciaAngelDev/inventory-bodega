@@ -56,7 +56,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <header className="flex-shrink-0 flex items-center justify-between py-3 px-4 border-b sticky top-0 bg-background z-10">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="cursor-pointer" />
-            <span>Dashboard</span>
+            <Link href="/dashboard">
+              <span>Dashboard</span>
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             <ModeToggle />

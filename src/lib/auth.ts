@@ -9,7 +9,7 @@ interface TokenPayload extends JwtPayload {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const TOKEN_EXPIRES_IN = '1d';
+const TOKEN_EXPIRES_IN = '31d';
 
 if (!JWT_SECRET) {
   throw new Error('No se encontro la llave de encriptacion');

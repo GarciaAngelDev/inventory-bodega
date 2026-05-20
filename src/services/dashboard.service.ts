@@ -16,14 +16,14 @@ enum SaleStatus {
 const calculateDetailTotal = (detail: any) => {
   const price = detail.retailPrice > 0 ? detail.retailPrice : detail.wholesalePrice;
   const quantity = detail.measureUnitValue > 0 ? detail.measureUnitValue : detail.quantity;
-  
+
   // Calcular subtotal
   let subtotal = 0;
-  
+
   if (detail.measureUnitValue > 0) {
     // Lógica para unidades de medida
     const measureUnit = detail.inventaryItems?.[0]?.product?.inputProduct?.measureUnit as string;
-    
+
     if (measureUnit === 'G' || measureUnit === 'ML') {
       subtotal = price * (quantity / 1000);
     } else {
@@ -33,10 +33,10 @@ const calculateDetailTotal = (detail: any) => {
     // Lógica para cantidad normal
     subtotal = price * quantity;
   }
-  
+
   // Calcular IVA si es mayor a 0
   const iva = detail.ivaPercentage > 0 ? (subtotal * detail.ivaPercentage) / 100 : 0;
-  
+
   return {
     subtotal,
     iva,
@@ -88,21 +88,40 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
     let exemptAmount = 0;    // Monto exento (sin IVA)
     let taxableAmount = 0;   // Base imponible (BI G)
     let taxAmount = 0;       // IVA G
+    let totalSurcharges = 0; // Recargos totales
     const productIds = new Set<string>(); // Para rastrear productos únicos
     const orderIds = new Set<string>();
+    const soldProductsMap: Record<string, { id: string; name: string; quantity: number; total: number }> = {};
 
     allSales.forEach(sale => {
       orderIds.add(sale.id);
-      
+      totalSurcharges += sale.discount || 0;
+
       if (sale.details) {
         sale.details.forEach(detail => {
-          const { subtotal, iva } = calculateDetailTotal(detail);
-          
-          // Contar productos únicos vendidos a través de inventaryItems
+          const { subtotal, iva, total } = calculateDetailTotal(detail);
+
+          // Contar productos únicos vendidos a través de inventaryItems y agregarlos al mapa
           if (detail.inventaryItems && detail.inventaryItems.length > 0 && detail.inventaryItems[0].product) {
-            productIds.add(detail.inventaryItems[0].product.id);
+            const product = detail.inventaryItems[0].product;
+            productIds.add(product.id);
+
+            const productId = product.id;
+            const productName = product.name;
+            const qty = detail.measureUnitValue > 0 ? detail.measureUnitValue : detail.quantity;
+
+            if (!soldProductsMap[productId]) {
+              soldProductsMap[productId] = {
+                id: productId,
+                name: productName,
+                quantity: 0,
+                total: 0
+              };
+            }
+            soldProductsMap[productId].quantity += qty;
+            soldProductsMap[productId].total += total;
           }
-          
+
           if (detail.ivaPercentage > 0) {
             // Producto con IVA
             taxableAmount += subtotal;
@@ -114,13 +133,22 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
         });
       }
     });
-    
-    const total = exemptAmount + taxableAmount + taxAmount;
+
+    const total = exemptAmount + taxableAmount + taxAmount + totalSurcharges;
+
+    const soldProductsList = Object.values(soldProductsMap)
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        quantity: parseFloat(p.quantity.toFixed(2)),
+        total: parseFloat(p.total.toFixed(2))
+      }))
+      .sort((a, b) => b.total - a.total);
 
     // Calcular porcentaje de cambio respecto al día anterior
     const yesterdayStart = subDays(new Date(from), 1);
     yesterdayStart.setHours(0, 0, 0, 0);
-    
+
     const yesterdayEnd = new Date(yesterdayStart);
     yesterdayEnd.setHours(23, 59, 59, 999);
 
@@ -153,20 +181,21 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
     let yesterdayTotal = 0;
     const yesterdayProductIds = new Set<string>(); // Para rastrear productos únicos de ayer
     const yesterdayOrderIds = new Set<string>();
-    
+
     yesterdaySales.forEach(sale => {
       yesterdayOrderIds.add(sale.id);
       if (sale.details) {
         sale.details.forEach(detail => {
           const { total } = calculateDetailTotal(detail);
           yesterdayTotal += total;
-          
+
           // Contar productos únicos vendidos ayer a través de inventaryItems
           if (detail.inventaryItems && detail.inventaryItems.length > 0 && detail.inventaryItems[0].product) {
             yesterdayProductIds.add(detail.inventaryItems[0].product.id);
           }
         });
       }
+      yesterdayTotal += sale.discount || 0;
     });
 
     // const totalProducts = productIds.size;
@@ -205,16 +234,17 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       productsPercentageChange = 100; // Si no había productos ayer pero sí hoy, el cambio es del 100%
     }
 
-    // Obtener inventarios con status PREPARED y tipo SALE
+    // Obtener todos los inventarios en estado PREPARED (para tipo SALE e INTERNAL)
     const preparedInventories = await prisma.inventary.findMany({
       where: {
-        status: 'PREPARED',
-        type: 'SALE'
+        status: 'PREPARED'
       },
       include: {
         inventaryItems: {
           where: {
-            status: 'AVAILABLE'
+            status: {
+              in: ['AVAILABLE', 'RESERVED']
+            }
           },
           include: {
             product: {
@@ -227,8 +257,8 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       }
     });
 
-    // Procesar productos para identificar los críticos
-    const productStock: Record<string, {
+    // Procesar productos para identificar los críticos y distribución de stock
+    const productStockSale: Record<string, {
       id: string;
       name: string;
       currentStock: number;
@@ -238,24 +268,44 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       measureUnitType?: string;
     }> = {};
 
-    // Calcular el stock actual de cada producto
+    const productStockInternal: Record<string, {
+      id: string;
+      name: string;
+      currentStock: number;
+      minStock: number;
+      hasInputProduct: boolean;
+      measureUnit?: string;
+      measureUnitType?: string;
+    }> = {};
+
+    let reservedSaleCount = 0;
+    let reservedInternalCount = 0;
+
     preparedInventories.forEach((inventory: any) => {
       inventory.inventaryItems.forEach((item: any) => {
         if (!item.product) return;
-        
+
+        if (item.status === 'RESERVED') {
+          if (inventory.type === 'SALE') {
+            reservedSaleCount++;
+          } else {
+            reservedInternalCount++;
+          }
+          return;
+        }
+
         const productId = item.product.id;
         const hasInputProduct = !!item.product.inputProduct;
-        
-        // Determinar la cantidad basada en si el producto usa medida o no
         const quantity = hasInputProduct ? item.measureUnitValue : item.stock;
-        
-        if (!productStock[productId]) {
-          // Determinar el stock mínimo basado en si tiene InputProduct o no
-          const minStock = hasInputProduct 
+
+        const targetMap = inventory.type === 'SALE' ? productStockSale : productStockInternal;
+
+        if (!targetMap[productId]) {
+          const minStock = hasInputProduct
             ? (item.product.inputProduct?.minQuantity || 0)
             : (item.product.minStock || 0);
-            
-          productStock[productId] = {
+
+          targetMap[productId] = {
             id: productId,
             name: item.product.name,
             currentStock: 0,
@@ -265,18 +315,39 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
             measureUnitType: hasInputProduct ? 'inputProduct' : 'product'
           };
         }
-        
-        // Sumar al stock actual según el tipo de producto
-        productStock[productId].currentStock += quantity || 0;
+
+        targetMap[productId].currentStock += quantity || 0;
       });
     });
 
-    // Filtrar productos críticos (stock actual <= stock mínimo)
-    const criticalProducts = Object.values(productStock)
+    // Calcular distribución de stock para SALE
+    let availableSale = 0;
+    let lowStockSale = 0;
+    let outOfStockSale = 0;
+
+    Object.values(productStockSale).forEach(p => {
+      if (p.currentStock <= 0) outOfStockSale++;
+      else if (p.currentStock <= p.minStock) lowStockSale++;
+      else availableSale++;
+    });
+
+    // Calcular distribución de stock para INTERNAL
+    let availableInternal = 0;
+    let lowStockInternal = 0;
+    let outOfStockInternal = 0;
+
+    Object.values(productStockInternal).forEach(p => {
+      if (p.currentStock <= 0) outOfStockInternal++;
+      else if (p.currentStock <= p.minStock) lowStockInternal++;
+      else availableInternal++;
+    });
+
+    // Filtrar productos críticos (stock actual <= stock mínimo, basándose en tipo SALE)
+    const criticalProducts = Object.values(productStockSale)
       .filter(product => {
         // Solo considerar productos con stock mayor a 0 para la comparación
         if (product.currentStock <= 0) return false;
-        
+
         // Verificar si el stock actual es menor o igual al mínimo
         return product.currentStock <= product.minStock;
       })
@@ -311,6 +382,23 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       criticalProducts: {
         count: criticalProducts.length,
         products: criticalProducts
+      },
+      soldProducts: soldProductsList,
+      inventoryStatus: {
+        sale: {
+          available: availableSale,
+          lowStock: lowStockSale,
+          outOfStock: outOfStockSale,
+          reserved: reservedSaleCount,
+          total: availableSale + lowStockSale + outOfStockSale + reservedSaleCount
+        },
+        internal: {
+          available: availableInternal,
+          lowStock: lowStockInternal,
+          outOfStock: outOfStockInternal,
+          reserved: reservedInternalCount,
+          total: availableInternal + lowStockInternal + outOfStockInternal + reservedInternalCount
+        }
       }
     };
   } catch (error) {

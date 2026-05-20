@@ -11,6 +11,7 @@ import CreateInventaryDialog from "./create-inventary-dialog";
 import { useInventary } from "@/hooks/useInventary";
 import InventoryTable from "./inventary-table";
 import { DateRange } from "react-day-picker";
+import Link from "next/link";
 
 const PageInventaryContent = () => {
 
@@ -49,7 +50,9 @@ const PageInventaryContent = () => {
       <CreateInventaryDialog open={open} onOpenChange={setOpen} />
       <div className="flex sm:items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Inventario</h2>
+          <Link href="/dashboard/ventas">
+            <h2 className="text-2xl font-bold">Inventario</h2>
+          </Link>
           {
             isLoading ? (
               <Skeleton className="h-4 w-52 mt-2" />
