@@ -19,9 +19,9 @@ const DashboardHeader = ({ dateRange, setDateRange, resetDashboardData }: Dashbo
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <Link href="/dashboard/ventas">
-            <h1 className="text-3xl font-bold text-balance">Dashboard de Análisis</h1>
+            <h1 className="text-2xl font-bold text-balance">Dashboard de Análisis</h1>
           </Link>
-          <p className="text-muted-foreground mt-1">Gestión integral de inventario, ventas y producción</p>
+          <p className="text-muted-foreground mt-1 hidden sm:block">Gestión integral de inventario, ventas y producción</p>
         </div>
 
         <div className="flex gap-2">
