@@ -246,7 +246,7 @@ const PageSalesContent = () => {
                       modal
                       className="[&_button]:h-9 [&_button]:text-sm"
                       data={filteredAvailableProducts.map((available) => ({
-                        label: `${available.product.name} ${available.product.refCode && `(${available.product.refCode})`}`,
+                        label: `${available.product.name} ${available.inventoryItems.reduce((total, item) => total + (item.isInputProduct ? item.availableMeasureUnitValue : item.availableQuantity), 0)} ${available.product.inputProduct?.measureUnit || 'UND'}`,
                         value: available.product.id!,
                         inventoryType: getInventoryType(available)
                       }))}
