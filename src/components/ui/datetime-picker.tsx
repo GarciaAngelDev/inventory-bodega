@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { fmtVET } from '@/utils/timezone'
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
@@ -37,7 +37,7 @@ export function DateTimePicker({
       setSelectedDate(date)
       const hours = date.getHours()
       const minutes = date.getMinutes()
-      
+
       // Convertir a formato 12 horas
       const hour12 = hours % 12 || 12
       setHour(hour12.toString().padStart(2, '0'))
@@ -61,19 +61,19 @@ export function DateTimePicker({
     if (currentDate) {
       const dateTime = new Date(currentDate)
       let hours = parseInt(currentHour)
-      
+
       // Convertir de 12 horas a 24 horas
       if (currentPeriod === "PM" && hours !== 12) {
         hours += 12
       } else if (currentPeriod === "AM" && hours === 12) {
         hours = 0
       }
-      
+
       dateTime.setHours(hours)
       dateTime.setMinutes(parseInt(currentMinute))
       dateTime.setSeconds(0)
       dateTime.setMilliseconds(0)
-      
+
       onDateChange?.(dateTime)
     }
   }, [selectedDate, hour, minute, period, onDateChange])
@@ -108,7 +108,7 @@ export function DateTimePicker({
 
   // Generar opciones de horas (1-12)
   const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'))
-  
+
   // Generar opciones de minutos (0-59)
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'))
 
@@ -126,7 +126,7 @@ export function DateTimePicker({
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {selectedDate ? (
-            format(selectedDate, "PPP 'a las' hh:mm a", { locale: es })
+            fmtVET(selectedDate, "PPP 'a las' hh:mm a")
           ) : (
             <span>{placeholder}</span>
           )}
@@ -140,7 +140,7 @@ export function DateTimePicker({
             onSelect={handleDateSelect}
             initialFocus
             captionLayout="dropdown"
-            
+
           />
           <div className="border-t p-3">
             <div className="flex items-center gap-2">

@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Button } from "@/components/ui/button";
 import { CreateInventoryData, InventoryFetch, InventoryStatus, InventoryType } from "@/types";
 import CreateInventaryDialog from "./create-inventary-dialog";
-import { format } from "date-fns";
+import { fmtVET } from '@/utils/timezone';
 import DetailsInventaryDialog from "./details-inventary-dialog";
 import { Badge } from "@/components/ui/badge";
 import { updateInventary } from "@/actions/inventary.action";
@@ -278,8 +278,8 @@ const InventoryTable = ({ inventary, isLoading, pagination, onSearch, searchLoad
       },
       cell: ({ row }) => (
         <div className="flex flex-col px-4">
-          <span>{format(row.original.createdAt!, 'dd/MM/yyyy')}</span>
-          <span className="text-xs text-muted-foreground">{format(row.original.createdAt!, 'HH:mm:ss a')}</span>
+          <span>{fmtVET(row.original.createdAt!, 'dd/MM/yyyy')}</span>
+          <span className="text-xs text-muted-foreground">{fmtVET(row.original.createdAt!, 'HH:mm:ss a')}</span>
         </div>
       ),
     },

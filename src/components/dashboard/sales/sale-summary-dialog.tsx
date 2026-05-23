@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Box, Boxes, CalendarIcon, Download, Eye, MapPin, Phone, Printer, ReceiptText, X, CheckCircle2, BadgeCheck } from "lucide-react";
-import { format } from "date-fns";
+import { fmtVET } from '@/utils/timezone';
 import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -111,7 +111,7 @@ const SaleSummaryDialog = ({ showSummary, setShowSummary, sale, inline, onClose 
                   <h1>Resumen de Venta</h1>
                   <h2>TuLojita</h2>
                   <p>Factura: ${sale.id?.split("-")[4] || "Nueva Venta"}</p>
-                  <p>Fecha: ${format(sale.createdAt!, "dd/MM/yyyy hh:mm:ss a")}</p>
+                  <p>Fecha: ${fmtVET(sale.createdAt!, "dd/MM/yyyy hh:mm:ss a")}</p>
                   ${sale.client ? `
                   <hr />
                   <div>
@@ -120,7 +120,7 @@ const SaleSummaryDialog = ({ showSummary, setShowSummary, sale, inline, onClose 
                   ${sale.client.identity ? `<p>Identidad: ${Number(sale.client.identity).toLocaleString()}</p>` : ''}
                   ${sale.client.phone ? `<p>Telefono: ${sale.client.phone}</p>` : ''}
                   ${sale.client.address ? `<p>Direccion: ${sale.client.address}</p>` : ''}
-                  ${sale.deliveryDate ? `<p>Entrega: ${format(sale.deliveryDate!, "dd/MM/yyyy hh:mm:ss a")}</p>` : ''}
+                  ${sale.deliveryDate ? `<p>Entrega: ${fmtVET(sale.deliveryDate!, "dd/MM/yyyy hh:mm:ss a")}</p>` : ''}
                   </div>
                   <hr />
                   ` : ''
@@ -296,7 +296,7 @@ const SaleSummaryDialog = ({ showSummary, setShowSummary, sale, inline, onClose 
             ID: {sale.id?.split("-")[4] || sale.id?.substring(0, 8)}
           </span>
           <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] text-muted-foreground bg-muted/60 border border-muted-foreground/10">
-            Fecha: {format(sale.createdAt!, "dd/MM/yyyy")}
+            Fecha: {fmtVET(sale.createdAt!, "dd/MM/yyyy")}
           </span>
         </div>
       </div>
@@ -329,7 +329,7 @@ const SaleSummaryDialog = ({ showSummary, setShowSummary, sale, inline, onClose 
           {sale.deliveryDate && (
             <div className="mt-2 pt-2 border-t border-dashed border-border/60 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
               <CalendarIcon className="h-3.5 w-3.5" />
-              <span>Entrega: {format(sale.deliveryDate!, "dd/MM/yyyy hh:mm a")}</span>
+              <span>Entrega: {fmtVET(sale.deliveryDate!, "dd/MM/yyyy hh:mm a")}</span>
             </div>
           )}
         </div>

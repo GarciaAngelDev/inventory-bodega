@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Button } from "@/components/ui/button";
 import { CreateInventoryData, InventoryFetch, InventoryStatus, Producer, ProducerStatus } from "@/types";
 
-import { format } from "date-fns";
+import { fmtVET } from '@/utils/timezone';
 
 import { Badge } from "@/components/ui/badge";
 import { updateInventary } from "@/actions/inventary.action";
@@ -162,7 +162,7 @@ const ProducerHistoriesTable = ({ producers, isLoading, pagination, onSearch, ..
       },
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <span>{format(row.original.createdAt!, 'dd/MM/yyyy')}</span>
+          <span>{fmtVET(row.original.createdAt!, 'dd/MM/yyyy')}</span>
           {/* <span className="text-muted-foreground">{format(row.original.createdAt!, 'HH:mm:ss')}</span> */}
         </div>
       ),

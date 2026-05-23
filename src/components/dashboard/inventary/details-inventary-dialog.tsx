@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/format-price";
 import { cn } from "@/lib/utils";
 import { InventoryFetch, InventoryItem, InventoryItemStatus, InventoryStatus, InventoryType, MeasureUnit, UpdateInventoryItemData } from "@/types";
 import { Boxes, CircleCheck, CircleDollarSign, History, Package, ReceiptText, UserRound } from "lucide-react";
-import { format } from "date-fns";
+import { fmtVET } from '@/utils/timezone';
 import { useEffect, useState } from "react";
 import { getInventaryById, updateInventaryItem } from "@/actions/inventary.action";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -176,7 +176,7 @@ const DetailsInventaryDialog = ({ open, onOpenChange, inventaryId }: DetailsInve
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
             <div>
               <DialogTitle>{isLoading ? "Cargando inventario..." : inventoryData?.name}</DialogTitle>
-              <DialogDescription className="my-1">{isLoading ? "Cargando fecha..." : format(inventoryData?.createdAt!, "dd/MM/yyyy") + " " + format(inventoryData?.createdAt!, "HH:mm:ss a")}</DialogDescription>
+              <DialogDescription className="my-1">{isLoading ? "Cargando fecha..." : fmtVET(inventoryData?.createdAt!, "dd/MM/yyyy") + " " + fmtVET(inventoryData?.createdAt!, "HH:mm:ss a")}</DialogDescription>
               <Badge className={cn(
                 inventoryData?.status === InventoryStatus.PENDING ? "bg-yellow-500/10 border-yellow-300 text-yellow-500" :
                   inventoryData?.status === InventoryStatus.PREPARED ? "bg-green-500/10 border-green-300 text-green-500" :
