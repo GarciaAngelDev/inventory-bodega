@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { getAvailableProductById } from "@/actions/products.action";
 
 interface CreateSingleFormProps {
   data?: CreateInventoryData;
@@ -48,17 +49,27 @@ const CreateSingleForm = ({ data, onOpenChange }: CreateSingleFormProps) => {
 
   const [loadingSelects, setLoadingSelects] = useState(true);
 
-  const handleProductSelect = (index: number, productId: string) => {
+  const handleProductSelect = async (index: number, productId: string) => {
     const selectedProduct = getProductsQuery.data?.data.find((p: ProductFetch) => p.id === productId);
     if (selectedProduct) {
+      // Set basic fields first
       updateItem(index, {
         productId: selectedProduct.id,
-        retailPrice: selectedProduct.retailPrice?.toString() || '',
-        wholesalePrice: selectedProduct.wholesalePrice?.toString() || '',
         stock: '',
         enabledIva: false,
         ivaPercentage: 0,
       });
+      try {
+        const available = await getAvailableProductById(productId);
+        if (available) {
+          updateItem(index, {
+            retailPrice: available.retailPrice?.toString() || '',
+            wholesalePrice: available.wholesalePrice?.toString() || '',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching latest price:', error);
+      }
     }
   };
 
