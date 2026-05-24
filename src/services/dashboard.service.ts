@@ -258,6 +258,45 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
     });
 
     // Procesar productos para identificar los críticos y distribución de stock
+const stockStart = subDays(new Date(from), 1);
+stockStart.setHours(0, 0, 0, 0);
+const stockEnd = new Date(stockStart);
+stockEnd.setHours(23, 59, 59, 999);
+    const yesterdayPrepared = await prisma.inventary.findMany({
+      where: {
+        status: 'PREPARED',
+        createdAt: {
+          gte: stockStart,
+          lte: stockEnd,
+        },
+      },
+      include: {
+    inventaryItems: {
+      where: {
+        status: {
+          in: ['AVAILABLE', 'RESERVED'],
+        },
+      },
+      include: {
+        product: {
+          include: {
+            inputProduct: true,
+          },
+        },
+      },
+    },
+  },
+});
+
+const yesterdayStockMap: Record<string, number> = {};
+yesterdayPrepared.forEach(inv => {
+  inv.inventaryItems.forEach(item => {
+    if (!item.product) return;
+    const qty = item.stock ?? 0;
+    const pid = item.product.id;
+    yesterdayStockMap[pid] = (yesterdayStockMap[pid] ?? 0) + qty;
+  });
+});
     const productStockSale: Record<string, {
       id: string;
       name: string;
@@ -324,6 +363,15 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
         targetMap[productId].initialStock += initialQuantity || 0;
       });
     });
+  // Incorporar stock del día anterior como stock inicial
+  Object.entries(yesterdayStockMap).forEach(([pid, qty]) => {
+    if (productStockSale[pid]) {
+      productStockSale[pid].initialStock = qty;
+    }
+    if (productStockInternal[pid]) {
+      productStockInternal[pid].initialStock = qty;
+    }
+  });
 
     // Calcular distribución de stock para SALE
     let availableSale = 0;
