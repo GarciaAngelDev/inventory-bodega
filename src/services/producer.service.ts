@@ -2,6 +2,7 @@ import { InventaryItemStatus, InventaryStatus, InventaryType } from "@/generated
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@/types";
 import { CreateProducerData, ProducerDetailStatus, ProducerStatus } from "@/types/producer";
+import { getVETDayBounds } from "@/utils/timezone";
 
 export const createProducer = async (userId: string, data: CreateProducerData) => {
   try {
@@ -620,8 +621,11 @@ export const getProducersByUser = async ({ userId, limit = 10, offset = 0, query
       })
     ]);
 
-    // Calcular total de producciones de hoy
-    const totalProducersToday = amount.filter(p => p.createdAt >= new Date(new Date().setHours(0, 0, 0, 0)) && p.createdAt <= new Date(new Date().setHours(23, 59, 59, 999))).length;
+    // Calcular total de producciones de hoy usando zona VET
+    const todayBounds = getVETDayBounds(new Date());
+    const totalProducersToday = amount.filter(p =>
+      p.createdAt >= todayBounds.start && p.createdAt <= todayBounds.end
+    ).length;
 
     // Calcular total de producciones
     const totalProducers = amount.length;

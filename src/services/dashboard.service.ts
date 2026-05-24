@@ -1,14 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { subDays } from "date-fns";
-// Helper to get UTC start and end of a given date (midnight to 23:59:59.999 UTC)
-const getUtcDayBounds = (date: Date) => {
-  const y = date.getUTCFullYear();
-  const m = date.getUTCMonth();
-  const d = date.getUTCDate();
-  const start = new Date(Date.UTC(y, m, d));
-  const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
-  return { start, end };
-};
+import { getVETDayBounds } from "@/utils/timezone";
 
 type DateRange = {
   from: Date;
@@ -53,14 +45,26 @@ const calculateDetailTotal = (detail: any) => {
   };
 };
 
-export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { from: new Date(), to: undefined }) => {
-  // Configurar fechas para el rango solicitado
-  const from = dateRange.from ? new Date(dateRange.from) : new Date();
-  from.setHours(0, 0, 0, 0);
+// Exported function to fetch dashboard data
+export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
+  // Configurar fechas para el rango solicitado usando zona VET
+  let from: Date;
+  let to: Date;
 
-  // Si no hay fecha de fin, usamos la misma fecha de inicio
-  let to = dateRange.to ? new Date(dateRange.to) : new Date(from);
-  to.setHours(23, 59, 59, 999);
+  if (dateRange.from) {
+    const { start, end } = getVETDayBounds(dateRange.from);
+    from = start;
+    to = end;
+  } else {
+    const { start, end } = getVETDayBounds(new Date());
+    from = start;
+    to = end;
+  }
+
+  if (dateRange.to) {
+    const { end } = getVETDayBounds(dateRange.to);
+    to = end;
+  }
 
   try {
     // Consulta para las ventas en el rango de fechas
@@ -154,10 +158,8 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       }))
       .sort((a, b) => b.total - a.total);
 
-    // Calcular porcentaje de cambio respecto al día anterior
-    const yesterdayDate = subDays(new Date(from), 1);
-    const { start: yesterdayStart, end: yesterdayEnd } = getUtcDayBounds(yesterdayDate);
-
+    const yesterdayDate = subDays(from, 1);
+    const { start: yesterdayStart, end: yesterdayEnd } = getVETDayBounds(yesterdayDate);
 
     const yesterdaySales = await prisma.sale.findMany({
       where: {
@@ -264,10 +266,8 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       }
     });
 
-    // Procesar productos para identificar los críticos y distribución de stock
-const stockDate = subDays(new Date(from), 1);
-const { start: stockStart, end: stockEnd } = getUtcDayBounds(stockDate);
-
+    const stockDate = subDays(from, 1);
+    const { start: stockStart, end: stockEnd } = getVETDayBounds(stockDate);
     const yesterdayPrepared = await prisma.inventary.findMany({
       where: {
         status: 'PREPARED',
@@ -277,32 +277,33 @@ const { start: stockStart, end: stockEnd } = getUtcDayBounds(stockDate);
         },
       },
       include: {
-    inventaryItems: {
-      where: {
-        status: {
-          in: ['AVAILABLE', 'RESERVED'],
-        },
-      },
-      include: {
-        product: {
+        inventaryItems: {
+          where: {
+            status: {
+              in: ['AVAILABLE', 'RESERVED'],
+            },
+          },
           include: {
-            inputProduct: true,
+            product: {
+              include: {
+                inputProduct: true,
+              },
+            },
           },
         },
       },
-    },
-  },
-});
+    });
 
-const yesterdayStockMap: Record<string, number> = {};
-yesterdayPrepared.forEach(inv => {
-  inv.inventaryItems.forEach(item => {
-    if (!item.product) return;
-    const qty = item.stock ?? 0;
-    const pid = item.product.id;
-    yesterdayStockMap[pid] = (yesterdayStockMap[pid] ?? 0) + qty;
-  });
-});
+    const yesterdayStockMap: Record<string, number> = {};
+    yesterdayPrepared.forEach(inv => {
+      inv.inventaryItems.forEach(item => {
+        if (!item.product) return;
+        const qty = item.stock ?? 0;
+        const pid = item.product.id;
+        yesterdayStockMap[pid] = (yesterdayStockMap[pid] ?? 0) + qty;
+      });
+    });
+
     const productStockSale: Record<string, {
       id: string;
       name: string;
@@ -369,15 +370,15 @@ yesterdayPrepared.forEach(inv => {
         targetMap[productId].initialStock += initialQuantity || 0;
       });
     });
-  // Incorporar stock del día anterior como stock inicial
-  Object.entries(yesterdayStockMap).forEach(([pid, qty]) => {
-    if (productStockSale[pid]) {
-      productStockSale[pid].initialStock = qty;
-    }
-    if (productStockInternal[pid]) {
-      productStockInternal[pid].initialStock = qty;
-    }
-  });
+    // Incorporar stock del día anterior como stock inicial
+    Object.entries(yesterdayStockMap).forEach(([pid, qty]) => {
+      if (productStockSale[pid]) {
+        productStockSale[pid].initialStock = qty;
+      }
+      if (productStockInternal[pid]) {
+        productStockInternal[pid].initialStock = qty;
+      }
+    });
 
     // Calcular distribución de stock para SALE
     let availableSale = 0;
