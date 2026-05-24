@@ -1,61 +1,21 @@
-import { NextResponse, NextRequest } from 'next/server';
-import { jwtVerify } from 'jose';
-import { UserRole } from './types';
-import { dashboardNavigation } from './config/dashboard-navigation';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const publicPaths = ['/'];
-const protectedPaths = ['/dashboard'];
-
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const token = request.cookies.get('token')?.value;
-
-  const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith(`${path}/`));
-  const isProtectedPath = protectedPaths.some(path => pathname === path || pathname.startsWith(`${path}/`));
-
-  try {
-    if (token) {
-      const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET));
-      const userRole = payload.role as UserRole;
-      
-      if (isPublicPath) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-
-      const hasPermission = dashboardNavigation.some(item => item.roles?.includes(userRole) && (item.url === pathname || pathname.startsWith(`${item.url}/`)));
-      const firstUrl = dashboardNavigation.find(item => item.roles?.includes(userRole))?.url;
-
-      if(!hasPermission) {
-        if((userRole === UserRole.SUPER || userRole === UserRole.ADMIN) && pathname === '/dashboard/configuracion') {
-          return NextResponse.next();
-        } else {
-          if(pathname === '/dashboard/perfil') {
-            return NextResponse.next();
-          }
-          return NextResponse.redirect(new URL(firstUrl!, request.url));
-        }
-      }
-    } 
-    else if (isProtectedPath) {
-      return NextResponse.redirect(new URL('/', request.url), {
-        headers: {
-          'Set-Cookie': `token=; Path=/; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Lax`
-        }
-      });
-    }
-    
-    return NextResponse.next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    const response = NextResponse.redirect(new URL('/', request.url), {
-      headers: {
-        'Set-Cookie': `token=; Path=/; HttpOnly; Secure=${process.env.NODE_ENV === 'production'}; SameSite=Lax`
-      }
-    });
-    return response;
-  }
+/**
+ * Middleware de la aplicación.
+ * Si tienes lógica personalizada, añádela aquí.
+ * Por defecto solo deja pasar la petición.
+ */
+export function middleware(request: NextRequest) {
+  // Ejemplo de registro (puedes eliminarlo en producción)
+  console.log('Middleware ejecutado para', request.nextUrl.pathname);
+  return NextResponse.next();
 }
 
+/**
+ * Configuración del Middleware.
+ * Aplica a todas las rutas excepto assets estáticos, API y rutas internas de Next.
+ */
 export const config = {
-  matcher: ['/', '/dashboard/:path*'],
-}
+  matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+};
