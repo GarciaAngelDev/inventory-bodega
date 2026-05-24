@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { subDays } from "date-fns";
+// Helper to get UTC start and end of a given date (midnight to 23:59:59.999 UTC)
+const getUtcDayBounds = (date: Date) => {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth();
+  const d = date.getUTCDate();
+  const start = new Date(Date.UTC(y, m, d));
+  const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
+  return { start, end };
+};
 
 type DateRange = {
   from: Date;
@@ -146,11 +155,9 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       .sort((a, b) => b.total - a.total);
 
     // Calcular porcentaje de cambio respecto al día anterior
-    const yesterdayStart = subDays(new Date(from), 1);
-    yesterdayStart.setHours(0, 0, 0, 0);
+    const yesterdayDate = subDays(new Date(from), 1);
+    const { start: yesterdayStart, end: yesterdayEnd } = getUtcDayBounds(yesterdayDate);
 
-    const yesterdayEnd = new Date(yesterdayStart);
-    yesterdayEnd.setHours(23, 59, 59, 999);
 
     const yesterdaySales = await prisma.sale.findMany({
       where: {
@@ -258,10 +265,9 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
     });
 
     // Procesar productos para identificar los críticos y distribución de stock
-const stockStart = subDays(new Date(from), 1);
-stockStart.setHours(0, 0, 0, 0);
-const stockEnd = new Date(stockStart);
-stockEnd.setHours(23, 59, 59, 999);
+const stockDate = subDays(new Date(from), 1);
+const { start: stockStart, end: stockEnd } = getUtcDayBounds(stockDate);
+
     const yesterdayPrepared = await prisma.inventary.findMany({
       where: {
         status: 'PREPARED',
