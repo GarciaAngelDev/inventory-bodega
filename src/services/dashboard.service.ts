@@ -262,6 +262,7 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       id: string;
       name: string;
       currentStock: number;
+      initialStock: number;
       minStock: number;
       hasInputProduct: boolean;
       measureUnit?: string;
@@ -272,6 +273,7 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
       id: string;
       name: string;
       currentStock: number;
+      initialStock: number;
       minStock: number;
       hasInputProduct: boolean;
       measureUnit?: string;
@@ -297,6 +299,7 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
         const productId = item.product.id;
         const hasInputProduct = !!item.product.inputProduct;
         const quantity = hasInputProduct ? item.measureUnitValue : item.stock;
+        const initialQuantity = hasInputProduct ? item.initialMeasureUnitValue : item.initialStock;
 
         const targetMap = inventory.type === 'SALE' ? productStockSale : productStockInternal;
 
@@ -309,6 +312,7 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
             id: productId,
             name: item.product.name,
             currentStock: 0,
+            initialStock: 0,
             minStock,
             hasInputProduct,
             measureUnit: hasInputProduct ? item.product.inputProduct?.measureUnit : 'UNIDAD',
@@ -317,6 +321,7 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
         }
 
         targetMap[productId].currentStock += quantity || 0;
+        targetMap[productId].initialStock += initialQuantity || 0;
       });
     });
 
@@ -361,6 +366,37 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
         measureUnitType: product.measureUnitType
       }));
 
+    // Calcular las listas detalladas de stock por producto
+    const saleProductsList = Object.values(productStockSale).map(p => {
+      const initial = parseFloat(p.initialStock.toFixed(2));
+      const current = parseFloat(p.currentStock.toFixed(2));
+      const difference = parseFloat(Math.max(0, initial - current).toFixed(2));
+      return {
+        id: p.id,
+        name: p.name,
+        initialStock: initial,
+        currentStock: current,
+        difference,
+        measureUnit: p.measureUnit || 'UNIDAD',
+        hasInputProduct: p.hasInputProduct
+      };
+    }).sort((a, b) => b.difference - a.difference);
+
+    const internalProductsList = Object.values(productStockInternal).map(p => {
+      const initial = parseFloat(p.initialStock.toFixed(2));
+      const current = parseFloat(p.currentStock.toFixed(2));
+      const difference = parseFloat(Math.max(0, initial - current).toFixed(2));
+      return {
+        id: p.id,
+        name: p.name,
+        initialStock: initial,
+        currentStock: current,
+        difference,
+        measureUnit: p.measureUnit || 'UNIDAD',
+        hasInputProduct: p.hasInputProduct
+      };
+    }).sort((a, b) => b.difference - a.difference);
+
     // Retornar los datos del dashboard
     return {
       sales: {
@@ -390,14 +426,16 @@ export const getDashboardByDateOrDateRange = async (dateRange: DateRange = { fro
           lowStock: lowStockSale,
           outOfStock: outOfStockSale,
           reserved: reservedSaleCount,
-          total: availableSale + lowStockSale + outOfStockSale + reservedSaleCount
+          total: availableSale + lowStockSale + outOfStockSale + reservedSaleCount,
+          products: saleProductsList
         },
         internal: {
           available: availableInternal,
           lowStock: lowStockInternal,
           outOfStock: outOfStockInternal,
           reserved: reservedInternalCount,
-          total: availableInternal + lowStockInternal + outOfStockInternal + reservedInternalCount
+          total: availableInternal + lowStockInternal + outOfStockInternal + reservedInternalCount,
+          products: internalProductsList
         }
       }
     };

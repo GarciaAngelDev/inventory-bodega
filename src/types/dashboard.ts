@@ -24,12 +24,23 @@ export interface SoldProduct {
   total: number;
 }
 
+export interface InventoryProductStock {
+  id: string;
+  name: string;
+  initialStock: number;
+  currentStock: number;
+  difference: number;
+  measureUnit: string;
+  hasInputProduct: boolean;
+}
+
 export interface DashboardInventoryStatusDetail {
   available: number;
   lowStock: number;
   outOfStock: number;
   reserved: number;
   total: number;
+  products: InventoryProductStock[];
 }
 
 export interface DashboardInventoryStatus {

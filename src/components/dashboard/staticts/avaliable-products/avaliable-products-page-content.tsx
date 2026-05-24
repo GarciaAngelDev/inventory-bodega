@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCriticalProducts } from "@/hooks/useCriticalProducts";
@@ -10,6 +10,8 @@ import { useCallback, useEffect, useState } from "react";
 import AvaliableProductsTable from "./avaliable-products-table";
 import { getAvailableProducts } from "@/actions/products.action";
 import { InventaryType } from "@/generated/prisma";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 export interface AvaliableProducts {
   data: AvaliableProduct[];
@@ -28,7 +30,7 @@ const AvaliableProductsPageContent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const limit = 10;
-  
+
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoading(true);
@@ -58,9 +60,12 @@ const AvaliableProductsPageContent = () => {
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-end justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Productos disponibles</h2>
+          <Link href="/dashboard/ventas" className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">Productos Disponibles</h2>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
           {
             isLoading ? (
               <Skeleton className="h-4 w-52 mt-2" />

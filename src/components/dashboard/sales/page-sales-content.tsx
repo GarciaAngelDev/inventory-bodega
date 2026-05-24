@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, ReceiptText } from "lucide-react";
+import { ArrowRight, Plus, ReceiptText } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -224,9 +224,16 @@ const PageSalesContent = () => {
           <div className="flex flex-col-reverse xs:flex-row justify-between items-end gap-2 md:gap-4">
             <div className="space-y-2 md:space-y-4 w-full">
               <div className="flex justify-between items-center gap-2">
-                <Link href="/dashboard/inventario">
-                  <h1 className="text-base font-semibold md:text-2xl md:font-bold">Nueva venta</h1>
-                </Link>
+
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard/inventario">
+                    <h1 className="text-base font-semibold md:text-2xl md:font-bold">Nueva venta</h1>
+                  </Link>
+                  <Link href="/dashboard/estadisticas/productos-disponibles">
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
                 <Link href="/dashboard/ventas/historial" className="xs:hidden">
                   <Button
                     size="sm"
