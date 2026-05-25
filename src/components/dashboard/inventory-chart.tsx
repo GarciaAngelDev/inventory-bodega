@@ -39,7 +39,7 @@ const InventoryChart = ({ data, loading }: InventoryChartProps) => {
             Movimiento de Stock
           </CardTitle>
           <span className="ml-5 text-[10px] text-muted-foreground font-medium">
-            Inicial vs Actual
+            Stock Diario vs Actual
           </span>
         </div>
 
@@ -93,15 +93,15 @@ const InventoryChart = ({ data, loading }: InventoryChartProps) => {
             <TableHeader className="bg-muted/50 sticky top-0 z-10">
               <TableRow>
                 <TableHead className="text-[10px] sm:text-xs font-semibold px-2 py-2 sm:px-4 sm:py-3">Producto</TableHead>
-                <TableHead className="text-right text-[10px] sm:text-xs font-semibold w-[55px] sm:w-[75px] px-1 py-2 sm:px-4 sm:py-3">Inicial</TableHead>
+                <TableHead className="text-right text-[10px] sm:text-xs font-semibold w-[55px] sm:w-[75px] px-1 py-2 sm:px-4 sm:py-3">Stock Diario</TableHead>
                 <TableHead className="text-right text-[10px] sm:text-xs font-semibold w-[55px] sm:w-[75px] px-1 py-2 sm:px-4 sm:py-3">Actual</TableHead>
                 <TableHead className="text-right text-[10px] sm:text-xs font-semibold w-[55px] sm:w-[75px] px-1 py-2 sm:px-4 sm:py-3">Dif.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => {
-                const percentage = product.initialStock > 0
-                  ? Math.min(100, (product.difference / product.initialStock) * 100)
+                const percentage = product.currentStock > 0
+                  ? Math.min(100, (product.difference / product.currentStock) * 100)
                   : 0;
 
                 // Definir colores y avisos según el stock actual
@@ -122,14 +122,15 @@ const InventoryChart = ({ data, loading }: InventoryChartProps) => {
                         </div>
                       </div>
                     </TableCell>
+
                     <TableCell className="text-right py-2 px-1 sm:py-2.5 sm:px-4 font-medium text-[11px] sm:text-xs text-muted-foreground">
-                      {product.initialStock} <span className="text-[9px] sm:text-[10px]">{product.measureUnit !== "UNIDAD" ? product.measureUnit : ""}</span>
+                                            {product.initialStock} <span className="text-[9px] sm:text-[10px]">{product.measureUnit !== "UNIDAD" ? product.measureUnit : ""}</span>
                     </TableCell>
-                    <TableCell className={`text-right py-2 px-1 sm:py-2.5 sm:px-4 font-semibold text-[11px] sm:text-xs ${isOutOfStock ? "text-red-500" : "text-foreground"}`}>
+                    <TableCell className="text-right py-2 px-1 sm:py-2.5 sm:px-4 font-medium text-[11px] sm:text-xs text-muted-foreground">
                       {product.currentStock} <span className="text-[9px] sm:text-[10px]">{product.measureUnit !== "UNIDAD" ? product.measureUnit : ""}</span>
                     </TableCell>
-                    <TableCell className="text-right py-2 px-1 sm:py-2.5 sm:px-4 font-semibold text-[11px] sm:text-xs text-blue-500">
-                      {product.difference > 0 ? `-${product.difference}` : product.difference} <span className="text-[9px] sm:text-[10px]">{product.measureUnit !== "UNIDAD" ? product.measureUnit : ""}</span>
+                    <TableCell className={`text-right py-2 px-1 sm:py-2.5 sm:px-4 font-semibold text-[11px] sm:text-xs ${product.difference < 0 ? "text-red-500" : "text-foreground"}`}>
+                      {product.difference} <span className="text-[9px] sm:text-[10px]">{product.measureUnit !== "UNIDAD" ? product.measureUnit : ""}</span>
                     </TableCell>
                   </TableRow>
                 );
@@ -145,7 +146,7 @@ const InventoryChart = ({ data, loading }: InventoryChartProps) => {
         </div>
         <div className="grid grid-cols-3 gap-2 w-full text-center border-t pt-2">
           <div>
-            <p className="text-[10px] text-muted-foreground">Inicial total</p>
+            <p className="text-[10px] text-muted-foreground">Stock Diario total</p>
             <p className="font-bold text-foreground text-sm">{parseFloat(totalInitial.toFixed(2))}</p>
           </div>
           <div>

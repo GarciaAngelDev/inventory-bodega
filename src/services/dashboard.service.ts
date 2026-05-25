@@ -105,6 +105,8 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
     const productIds = new Set<string>(); // Para rastrear productos únicos
     const orderIds = new Set<string>();
     const soldProductsMap: Record<string, { id: string; name: string; quantity: number; total: number }> = {};
+    const soldProductsMapSale: Record<string, number> = {};
+    const soldProductsMapInternal: Record<string, number> = {};
 
     allSales.forEach(sale => {
       orderIds.add(sale.id);
@@ -122,6 +124,12 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
             const productId = product.id;
             const productName = product.name;
             const qty = detail.measureUnitValue > 0 ? detail.measureUnitValue : detail.quantity;
+
+            if (detail.inventaryType === 'INTERNAL') {
+              soldProductsMapInternal[productId] = (soldProductsMapInternal[productId] || 0) + qty;
+            } else {
+              soldProductsMapSale[productId] = (soldProductsMapSale[productId] || 0) + qty;
+            }
 
             if (!soldProductsMap[productId]) {
               soldProductsMap[productId] = {
@@ -266,43 +274,7 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
       }
     });
 
-    const stockDate = subDays(from, 1);
-    const { start: stockStart, end: stockEnd } = getVETDayBounds(stockDate);
-    const yesterdayPrepared = await prisma.inventary.findMany({
-      where: {
-        status: 'PREPARED',
-        createdAt: {
-          gte: stockStart,
-          lte: stockEnd,
-        },
-      },
-      include: {
-        inventaryItems: {
-          where: {
-            status: {
-              in: ['AVAILABLE', 'RESERVED'],
-            },
-          },
-          include: {
-            product: {
-              include: {
-                inputProduct: true,
-              },
-            },
-          },
-        },
-      },
-    });
 
-    const yesterdayStockMap: Record<string, number> = {};
-    yesterdayPrepared.forEach(inv => {
-      inv.inventaryItems.forEach(item => {
-        if (!item.product) return;
-        const qty = item.stock ?? 0;
-        const pid = item.product.id;
-        yesterdayStockMap[pid] = (yesterdayStockMap[pid] ?? 0) + qty;
-      });
-    });
 
     const productStockSale: Record<string, {
       id: string;
@@ -370,15 +342,7 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
         targetMap[productId].initialStock += initialQuantity || 0;
       });
     });
-    // Incorporar stock del día anterior como stock inicial
-    Object.entries(yesterdayStockMap).forEach(([pid, qty]) => {
-      if (productStockSale[pid]) {
-        productStockSale[pid].initialStock = qty;
-      }
-      if (productStockInternal[pid]) {
-        productStockInternal[pid].initialStock = qty;
-      }
-    });
+
 
     // Calcular distribución de stock para SALE
     let availableSale = 0;
@@ -423,30 +387,30 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
 
     // Calcular las listas detalladas de stock por producto
     const saleProductsList = Object.values(productStockSale).map(p => {
-      const initial = parseFloat(p.initialStock.toFixed(2));
+      const difference = soldProductsMapSale[p.id] || 0;
       const current = parseFloat(p.currentStock.toFixed(2));
-      const difference = parseFloat(Math.max(0, initial - current).toFixed(2));
+      const initial = parseFloat((current + difference).toFixed(2));
       return {
         id: p.id,
         name: p.name,
         initialStock: initial,
         currentStock: current,
-        difference,
+        difference: parseFloat(difference.toFixed(2)),
         measureUnit: p.measureUnit || 'UNIDAD',
         hasInputProduct: p.hasInputProduct
       };
     }).sort((a, b) => b.difference - a.difference);
 
     const internalProductsList = Object.values(productStockInternal).map(p => {
-      const initial = parseFloat(p.initialStock.toFixed(2));
+      const difference = soldProductsMapInternal[p.id] || 0;
       const current = parseFloat(p.currentStock.toFixed(2));
-      const difference = parseFloat(Math.max(0, initial - current).toFixed(2));
+      const initial = parseFloat((current + difference).toFixed(2));
       return {
         id: p.id,
         name: p.name,
         initialStock: initial,
         currentStock: current,
-        difference,
+        difference: parseFloat(difference.toFixed(2)),
         measureUnit: p.measureUnit || 'UNIDAD',
         hasInputProduct: p.hasInputProduct
       };
