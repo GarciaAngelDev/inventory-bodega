@@ -102,7 +102,7 @@ const SaleHistoriesTable = ({ sales, isLoading, pagination, onSearch, getSalesQu
       cell: ({ row }) => (
         <div className="flex gap-2">
             <span>{fmtVET(row.original.createdAt!, 'dd/MM/yyyy')}</span>
-            {/* <span className="text-muted-foreground">{fmtVET(row.original.createdAt!, 'HH:mm:ss')}</span> */}
+            <span className="text-muted-foreground">{fmtVET(row.original.createdAt!, 'HH:mm:ss')}</span>
         </div>
       ),
     },
