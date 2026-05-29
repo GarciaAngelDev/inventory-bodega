@@ -101,8 +101,8 @@ const SaleHistoriesTable = ({ sales, isLoading, pagination, onSearch, getSalesQu
       },
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <span>{format(row.original.createdAt!, 'dd/MM/yyyy')}</span>
-          {/* <span className="text-muted-foreground">{format(row.original.createdAt!, 'HH:mm:ss')}</span> */}
+          <span>{format(row.original.createdAt!, 'yyyy-MM-dd')}</span>
+          <span className="text-muted-foreground">{format(row.original.createdAt!, 'HH:mm a')}</span>
         </div>
       ),
     },
