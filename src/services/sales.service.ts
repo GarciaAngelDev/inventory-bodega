@@ -2,6 +2,7 @@ import { InventaryItemStatus, InventaryStatus, InventaryType, Prisma, SaleDetail
 import { calculateDetailIva, detailPrice, detailPriceServer } from "@/lib/price";
 import { prisma } from "@/lib/prisma";
 import { CreateSaleData, CreateSaleDetailData, MeasureUnit, SaleDetail, UserRole } from "@/types";
+import { getVETDayBounds } from "@/utils/timezone";
 
 export const createSale = async (userId: string, data: CreateSaleData) => {
   console.log(data.deliveryDate)
@@ -286,14 +287,14 @@ export const getAllSales = async ({ user, limit = 10, offset = 0, query = '' }: 
       })
     ]);
 
-    // Calcular total de ventas de hoy
+    // Calcular total de ventas de hoy usando la zona VET
+    const todayBounds = getVETDayBounds(new Date());
     const totalSalesAmountToday = amount.reduce((sum, sale) => {
-      const today = new Date();
-      const saleDate = new Date(sale.createdAt);
-      if (saleDate.getDate() !== today.getDate()) {
+      if (sale.status !== SaleStatus.SOLD) {
         return sum;
       }
-      if (sale.status !== SaleStatus.SOLD) {
+      const saleDate = new Date(sale.createdAt);
+      if (saleDate < todayBounds.start || saleDate > todayBounds.end) {
         return sum;
       }
       const saleTotal = sale.details.reduce((detailSum, detail) => {
@@ -660,10 +661,10 @@ export const getSalesByAdmin = async () => {
 
 export const getSellersDailySales = async (limit = 10, offset = 0) => {
   try {
-    // Obtener la fecha de inicio y fin del día actual
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    // Obtener la fecha de inicio y fin del día actual usando zona VET
+    const todayBounds = getVETDayBounds(new Date());
+    const startOfDay = todayBounds.start;
+    const endOfDay = todayBounds.end;
 
     const result = await prisma.$transaction(async (tx) => {
       // Obtener todos los usuarios que son vendedores y tienen ventas
@@ -682,7 +683,7 @@ export const getSellersDailySales = async (limit = 10, offset = 0) => {
             where: {
               createdAt: {
                 gte: startOfDay,
-                lt: endOfDay
+                lte: endOfDay
               },
               // status: SaleStatus.SOLD // Solo ventas completadas
             },
@@ -855,12 +856,12 @@ export const getSalesByUser = async ({ userId, limit = 10, offset = 0, query = '
       })
     ]);
 
-    // Calcular total de ventas de hoy
+    // Calcular total de ventas de hoy usando la zona VET
+    const todayBounds = getVETDayBounds(new Date());
     const totalSalesAmountToday = amount.reduce((sum, sale) => {
       if (sale.status !== SaleStatus.SOLD) return sum;
-      const today = new Date();
       const saleDate = new Date(sale.createdAt);
-      if (saleDate.getDate() !== today.getDate()) {
+      if (saleDate < todayBounds.start || saleDate > todayBounds.end) {
         return sum;
       }
       const saleTotal = sale.details.reduce((detailSum, detail) => {

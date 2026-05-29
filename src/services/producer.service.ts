@@ -237,10 +237,10 @@ export const getAllProducers = async ({ limit = 10, offset = 0, query = '', user
 
 export const getProducersDaily = async () => {
 
-  // Obtener la fecha de inicio y fin del día actual
-  const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  // Obtener la fecha de inicio y fin del día actual usando zona VET
+  const todayBounds = getVETDayBounds(new Date());
+  const startOfDay = todayBounds.start;
+  const endOfDay = todayBounds.end;
 
   try {
 
@@ -258,7 +258,7 @@ export const getProducersDaily = async () => {
             where: {
               createdAt: {
                 gte: startOfDay,
-                lt: endOfDay
+                lte: endOfDay
               },
               // status: SaleStatus.SOLD // Solo ventas completadas
             },
