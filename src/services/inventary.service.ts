@@ -5,6 +5,8 @@ import { DateRange } from "react-day-picker";
 
 export const createInventary = async (userId: string, data: CreateInventoryData) => {
   try {
+    const productIds = data.items ? Array.from(new Set(data.items.map(item => item.productId))) : [];
+
     return await prisma.$transaction(async (tx) => {
 
       // 1. First, create the inventary
@@ -22,19 +24,22 @@ export const createInventary = async (userId: string, data: CreateInventoryData)
 
       // 2. If there are items
       if (data.items && data.items.length > 0) {
+        // Fetch all products at once to minimize database queries in the loop
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, measureUnitValue: true }
+        });
+        const productMap = new Map(products.map(p => [p.id, p]));
+
         for (const item of data.items) {
-          // Obtener el producto para acceder a su measureUnitValue
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: { measureUnitValue: true, inputProduct: true }
-          });
+          const product = productMap.get(item.productId);
 
           if (!product) {
             throw new Error(`Producto con ID ${item.productId} no encontrado`);
           }
 
           // Calcular los valores basados en el producto
-          const itemMeasureUnitValue = Number(item.stock) * Number(product.measureUnitValue!);
+          const itemMeasureUnitValue = Number(item.stock) * Number(product.measureUnitValue || 0);
 
           // Create the item
           await tx.inventaryItem.create({
@@ -62,6 +67,8 @@ export const createInventary = async (userId: string, data: CreateInventoryData)
           user: true,
         },
       });
+    }, {
+      timeout: 20000 // Aumentar el tiempo límite a 20 segundos para evitar timeouts por latencia
     });
   } catch (error: any) {
     console.log('Error creating inventary:', error);
@@ -175,6 +182,7 @@ export const getInventaryById = async (id: string) => {
 
 export const updateInventary = async (id: string, userId: string, data: CreateInventoryData) => {
   try {
+    const productIds = data.items ? Array.from(new Set(data.items.map(item => item.productId))) : [];
 
     const existsInventary = await prisma.inventary.findUnique({
       where: { id },
@@ -207,21 +215,22 @@ export const updateInventary = async (id: string, userId: string, data: CreateIn
 
       // 2. If there are items
       if (data.items && data.items.length > 0) {
-        for (const item of data.items) {
-          // Update or update
+        // Fetch all products at once to minimize database queries in the loop
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, measureUnitValue: true }
+        });
+        const productMap = new Map(products.map(p => [p.id, p]));
 
-          // Obtener el producto para acceder a su measureUnitValue
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-            select: { measureUnitValue: true, inputProduct: true }
-          });
+        for (const item of data.items) {
+          const product = productMap.get(item.productId);
 
           if (!product) {
             throw new Error(`Producto con ID ${item.productId} no encontrado`);
           }
 
           // Calcular los valores basados en el producto
-          const itemMeasureUnitValue = Number(item.stock) * Number(product.measureUnitValue!);
+          const itemMeasureUnitValue = Number(item.stock) * Number(product.measureUnitValue || 0);
 
           const updateStatus = () => {
             if( (item.status !== InventaryItemStatus.STOP) && (item.status !== InventaryItemStatus.AVAILABLE) ) return item.status;
@@ -280,6 +289,8 @@ export const updateInventary = async (id: string, userId: string, data: CreateIn
           user: true,
         },
       });
+    }, {
+      timeout: 20000 // Aumentar el tiempo límite a 20 segundos para evitar timeouts por latencia
     });
   } catch (error: any) {
     console.log('Error updating inventary:', error);

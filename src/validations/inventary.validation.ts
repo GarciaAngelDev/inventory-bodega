@@ -22,19 +22,23 @@ export const createInventaryValidation = (inventory: Inventory) => {
     if (!item.productId || item.productId === "") {
       return 'El producto es requerido';
     }
-    
-    if (item.stock <= 0) {
+
+    if (!item.id && item.stock <= 0) {
       return 'El stock debe ser mayor a 0';
     }
 
-    if(item.retailPrice <= 0){
+    if (item.id && item.stock < 0) {
+      return 'El stock no puede ser negativo';
+    }
+
+    if (item.retailPrice <= 0) {
       return 'El precio de al detal debe ser mayor a 0';
     }
-    
-    if(item.wholesalePrice < 0){
+
+    if (item.wholesalePrice < 0) {
       return 'El precio de al por mayor debe ser mayor a 0';
     }
-    
+
   }
 
   return null;
