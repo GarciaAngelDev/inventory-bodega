@@ -79,7 +79,7 @@ const ShowDetail = ({ productId, open, onClose }: ShowDetailProps) => {
 
   const handleSavePrices = async () => {
     if (!product) return;
-    
+
     const retail = parseFloat(tempRetailPrice);
     const wholesale = parseFloat(tempWholesalePrice);
 
@@ -110,7 +110,7 @@ const ShowDetail = ({ productId, open, onClose }: ShowDetailProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!max-w-2xl w-full max-h-[calc(100vh-10rem)]">
+      <DialogContent className="!max-w-2xl w-full max-h-[calc(100vh-4rem)] sm:max-h-[calc(100vh-10rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle asChild>
             <div className="flex gap-2 items-center">
@@ -128,24 +128,29 @@ const ShowDetail = ({ productId, open, onClose }: ShowDetailProps) => {
           <DialogDescription>Código: {product?.refCode || '---'}</DialogDescription>
         </DialogHeader>
         <Card className="p-4">
-          <div className="flex gap-4 w-full">
-            <Card className="p-4 w-full">
-              <div className="flex gap-2">
-                <div className="flex gap-2">
-                  <div className="w-16 h-16 bg-muted flex justify-center items-center rounded-lg">
-                    <Package />
+          <div className="flex flex-col sm:flex-row gap-4 w-full">
+            <Card className="p-4 w-full flex flex-col justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full">
+                {/* Header row in mobile: contains icon and title. In sm:, we hide this title, and only show the icon. */}
+                <div className="flex items-center sm:block gap-2 shrink-0">
+                  <div className="w-8 h-8 sm:w-16 sm:h-16 bg-muted flex justify-center items-center rounded-lg">
+                    <Package className="w-4 h-4 sm:w-8 sm:h-8 text-muted-foreground" />
                   </div>
-                  <div className="flex flex-col">
-                    <p className="text-muted-foreground text-sm">Cantidad disponible:</p>
-                    <div className="flex gap-2 items-center">
-                      <p className="font-bold text-2xl">{product?.avaliableCount || 0}</p>
-                      <span className="text-sm text-muted-foreground">{product?.inputProduct?.measureUnit || 'UND'}</span>
-                    </div>
+                  <p className="text-muted-foreground text-xs font-medium sm:hidden">Cantidad disponible</p>
+                </div>
+
+                {/* Content block: on desktop it contains title and value. On mobile it only contains the value. */}
+                <div className="flex flex-col justify-center min-w-0">
+                  <p className="text-muted-foreground text-sm font-medium hidden sm:block">Cantidad disponible:</p>
+                  <div className="flex gap-2 items-baseline mt-1 sm:mt-0">
+                    <p className="font-bold text-xl sm:text-2xl leading-none">{product?.avaliableCount || 0}</p>
+                    <span className="text-xs sm:text-sm text-muted-foreground font-semibold">{product?.inputProduct?.measureUnit || 'UND'}</span>
                   </div>
                 </div>
               </div>
             </Card>
-            <Card className="p-4 w-full relative">
+
+            <Card className="p-4 w-full relative flex flex-col justify-between">
               {canEditPrice && !isEditing && product && (
                 <button
                   onClick={() => {
@@ -153,75 +158,80 @@ const ShowDetail = ({ productId, open, onClose }: ShowDetailProps) => {
                     setTempWholesalePrice(product.wholesalePrice?.toString() || "0");
                     setIsEditing(true);
                   }}
-                  className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Editar precios"
                 >
                   <Pencil size={16} />
                 </button>
               )}
-              <div className="flex gap-2">
-                <div className="flex gap-2 w-full">
-                  <div className="w-16 h-16 bg-muted flex justify-center items-center rounded-lg shrink-0">
-                    <DollarSign />
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                {/* Header row in mobile: contains icon and title. In sm:, we hide this title, and only show the icon. */}
+                <div className="flex items-center sm:block gap-2 shrink-0">
+                  <div className="w-8 h-8 sm:w-16 sm:h-16 bg-muted flex justify-center items-center rounded-lg">
+                    <DollarSign className="w-4 h-4 sm:w-8 sm:h-8 text-muted-foreground" />
                   </div>
-                  <div className="flex flex-col w-full">
-                    <p className="text-muted-foreground text-sm font-medium mb-1">Precio de venta:</p>
-                    {isEditing ? (
-                      <div className="flex flex-col gap-2 w-full mt-1">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">Al detal ($):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={tempRetailPrice}
-                            onChange={(e) => setTempRetailPrice(e.target.value)}
-                            disabled={isSaving}
-                            className="w-full px-2 py-1 text-sm bg-background border border-input rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-xs text-muted-foreground">Al mayor ($):</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={tempWholesalePrice}
-                            onChange={(e) => setTempWholesalePrice(e.target.value)}
-                            disabled={isSaving}
-                            className="w-full px-2 py-1 text-sm bg-background border border-input rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                          />
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <button
-                            onClick={handleSavePrices}
-                            disabled={isSaving}
-                            className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-md transition-colors w-full"
-                          >
-                            {isSaving ? (
-                              <Loader2 className="animate-spin" size={14} />
-                            ) : (
-                              <Check size={14} />
-                            )}
-                            Guardar
-                          </button>
-                          <button
-                            onClick={() => setIsEditing(false)}
-                            disabled={isSaving}
-                            className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted hover:bg-muted/80 disabled:opacity-50 rounded-md transition-colors w-full"
-                          >
-                            <X size={14} />
-                            Cancelar
-                          </button>
-                        </div>
+                  <p className="text-muted-foreground text-xs font-medium sm:hidden">Precio de venta</p>
+                </div>
+
+                {/* Content block: on desktop it contains title and form. On mobile it only contains form. */}
+                <div className="flex flex-col w-full min-w-0">
+                  <p className="text-muted-foreground text-sm font-medium hidden sm:block mb-1">Precio de venta:</p>
+
+                  {isEditing ? (
+                    <div className="flex flex-col gap-2 w-full mt-1">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] sm:text-xs text-muted-foreground font-medium">Al detal ($):</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tempRetailPrice}
+                          onChange={(e) => setTempRetailPrice(e.target.value)}
+                          disabled={isSaving}
+                          className="w-full px-3 py-1.5 text-xs sm:text-sm bg-background border border-input rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground font-medium"
+                        />
                       </div>
-                    ) : (
-                      <div className="flex flex-col">
-                        <p className="text-sm">Al detal: {formatPrice({ price: product?.retailPrice || 0, country: { currency: 'USD', locale: 'en-US' } })}</p>
-                        <p className="text-sm">Al mayor: {formatPrice({ price: product?.wholesalePrice || 0, country: { currency: 'USD', locale: 'en-US' } })}</p>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] sm:text-xs text-muted-foreground font-medium">Al mayor ($):</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tempWholesalePrice}
+                          onChange={(e) => setTempWholesalePrice(e.target.value)}
+                          disabled={isSaving}
+                          className="w-full px-3 py-1.5 text-xs sm:text-sm bg-background border border-input rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground font-medium"
+                        />
                       </div>
-                    )}
-                  </div>
+                      <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                        <button
+                          onClick={handleSavePrices}
+                          disabled={isSaving}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-md transition-colors w-full cursor-pointer"
+                        >
+                          {isSaving ? (
+                            <Loader2 className="animate-spin" size={14} />
+                          ) : (
+                            <Check size={14} />
+                          )}
+                          Guardar
+                        </button>
+                        <button
+                          onClick={() => setIsEditing(false)}
+                          disabled={isSaving}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-muted-foreground bg-muted hover:bg-muted/80 disabled:opacity-50 rounded-md transition-colors w-full cursor-pointer"
+                        >
+                          <X size={14} />
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1 mt-1 sm:mt-0">
+                      <p className="text-xs sm:text-sm">Al detal: {formatPrice({ price: product?.retailPrice || 0, country: { currency: 'USD', locale: 'en-US' } })}</p>
+                      <p className="text-xs sm:text-sm">Al mayor: {formatPrice({ price: product?.wholesalePrice || 0, country: { currency: 'USD', locale: 'en-US' } })}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
