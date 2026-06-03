@@ -810,3 +810,39 @@ export const productDetail = async (id: string) => {
     throw error;
   }
 }
+
+export const updateLatestProductPrice = async (
+  productId: string,
+  retailPrice: number,
+  wholesalePrice: number
+) => {
+  try {
+    // Buscar el lote de inventario más reciente de este producto
+    const latestInventaryItem = await prisma.inventaryItem.findFirst({
+      where: { productId },
+      orderBy: {
+        inventary: {
+          createdAt: 'desc',
+        },
+      },
+    });
+
+    if (!latestInventaryItem) {
+      throw new Error('No se puede cambiar el precio porque este producto no tiene ningún inventario registrado');
+    }
+
+    // Actualizar el precio de ese lote de inventario
+    const updatedItem = await prisma.inventaryItem.update({
+      where: { id: latestInventaryItem.id },
+      data: {
+        retailPrice: Number(retailPrice),
+        wholesalePrice: Number(wholesalePrice),
+      },
+    });
+
+    return updatedItem;
+  } catch (error) {
+    console.error('Error al actualizar precio de producto:', error);
+    throw error;
+  }
+};

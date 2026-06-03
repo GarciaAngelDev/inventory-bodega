@@ -120,3 +120,13 @@ export const productDetail = async (id: string) => {
     throw error;
   }
 };
+
+export const updateProductPrice = async (id: string, retailPrice: number, wholesalePrice: number) => {
+  try {
+    const { data } = await api.put(`/products/detail/${id}`, { retailPrice, wholesalePrice });
+    return data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
