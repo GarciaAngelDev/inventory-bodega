@@ -22,6 +22,8 @@ export interface SoldProduct {
   name: string;
   quantity: number;
   total: number;
+  categoryId: string;
+  categoryName: string;
 }
 
 export interface InventoryProductStock {

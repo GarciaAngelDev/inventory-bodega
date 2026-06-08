@@ -104,7 +104,7 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
     let totalSurcharges = 0; // Recargos totales
     const productIds = new Set<string>(); // Para rastrear productos únicos
     const orderIds = new Set<string>();
-    const soldProductsMap: Record<string, { id: string; name: string; quantity: number; total: number }> = {};
+    const soldProductsMap: Record<string, { id: string; name: string; quantity: number; total: number; categoryId: string; categoryName: string }> = {};
     const soldProductsMapSale: Record<string, number> = {};
     const soldProductsMapInternal: Record<string, number> = {};
 
@@ -136,7 +136,9 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
                 id: productId,
                 name: productName,
                 quantity: 0,
-                total: 0
+                total: 0,
+                categoryId: product.category?.id ?? '',
+                categoryName: product.category?.name ?? ''
               };
             }
             soldProductsMap[productId].quantity += qty;
@@ -162,7 +164,9 @@ export async function getDashboardByDateOrDateRange(dateRange: DateRange) {
         id: p.id,
         name: p.name,
         quantity: parseFloat(p.quantity.toFixed(2)),
-        total: parseFloat(p.total.toFixed(2))
+        total: parseFloat(p.total.toFixed(2)),
+        categoryId: p.categoryId,
+        categoryName: p.categoryName
       }))
       .sort((a, b) => b.total - a.total);
 

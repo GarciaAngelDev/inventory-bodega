@@ -4,6 +4,13 @@ import { useState } from "react";
 import { Search, ShoppingBag } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Skeleton } from "../ui/skeleton";
 import { formatPrice } from "@/lib/format-price";
@@ -16,15 +23,29 @@ interface TodaySoldProductsProps {
 
 const TodaySoldProducts = ({ soldProducts, loading }: TodaySoldProductsProps) => {
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
 
-  // Calcular el total de ventas del día para el progreso y el total general
-  const maxTotal = soldProducts.length > 0 ? Math.max(...soldProducts.map((p) => p.total)) : 1;
-  const grandTotal = soldProducts.reduce((acc, p) => acc + p.total, 0);
-  const totalItemsSold = soldProducts.reduce((acc, p) => acc + p.quantity, 0);
+  // Obtener categorías únicas
+  const categories = Array.from(
+    new Map(
+      soldProducts
+        .filter((p) => p.categoryName)
+        .map((p) => [p.categoryId ?? p.categoryName, p.categoryName])
+    ).entries()
+  ).map(([id, name]) => ({ id, name }));
 
-  const filteredProducts = soldProducts.filter((product) =>
-    product.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filtrar productos por búsqueda y categoría
+  const filteredProducts = soldProducts.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "ALL" || product.categoryId === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Calcular totales basados en lista filtrada
+  const maxTotal = filteredProducts.length > 0 ? Math.max(...filteredProducts.map((p) => p.total)) : 1;
+  const grandTotal = filteredProducts.reduce((acc, p) => acc + p.total, 0);
+  const totalItemsSold = filteredProducts.reduce((acc, p) => acc + p.quantity, 0);
 
   return (
     <Card className="w-full pt-0 flex flex-col md:col-span-2">
@@ -35,14 +56,29 @@ const TodaySoldProducts = ({ soldProducts, loading }: TodaySoldProductsProps) =>
             Resumen detallado de productos vendidos en el periodo seleccionado
           </CardDescription>
         </div>
-        <div className="relative w-full sm:w-[220px] ml-auto">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar producto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-9 text-xs rounded-lg"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-[180px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar producto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-9 text-xs rounded-lg w-full"
+            />
+          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="h-9 w-full sm:w-[160px] text-xs rounded-lg cursor-pointer">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL" className="text-xs">Todas las categorías</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id} className="text-xs capitalize">
+                  {cat.name.toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="p-0 flex-1 overflow-auto max-h-[340px]">
