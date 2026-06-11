@@ -767,6 +767,7 @@ export const productDetail = async (id: string) => {
                 inputProduct: true,
               }
             },
+            inventary: true,
           }
         },
       }
@@ -777,27 +778,36 @@ export const productDetail = async (id: string) => {
     }
 
     const avaliableCount = existsProduct.inventaryItems
-  .filter(item => item.status === InventoryItemStatus.AVAILABLE)
-  .reduce((sum, item) => {
-    if (item.product.inputProduct) {
-      // For products with measurement units
-      const measureUnit = item.product.inputProduct.measureUnit;
-      if (measureUnit === MeasureUnit.KG || measureUnit === MeasureUnit.L) {
-        // For KG and L, use the full measureUnitValue
-        return sum + (item.measureUnitValue || 0);
-      } else if (measureUnit === MeasureUnit.G || measureUnit === MeasureUnit.ML) {
-        // For G and ML, convert to base units (divide by 1000)
-        return sum + ((item.measureUnitValue || 0) / 1000);
-      }
-      // For other units, just add as is
-      return sum + (item.measureUnitValue || 0);
-    } else {
-      // For regular products, add the quantity
-      return sum + (item.stock || 0);
-    }
-  }, 0);
-    const retailPrice = existsProduct.inventaryItems[existsProduct.inventaryItems.length - 1].retailPrice;
-    const wholesalePrice = existsProduct.inventaryItems[existsProduct.inventaryItems.length - 1].wholesalePrice;
+      .filter(item => item.status === InventoryItemStatus.AVAILABLE)
+      .reduce((sum, item) => {
+        if (item.product.inputProduct) {
+          // For products with measurement units
+          const measureUnit = item.product.inputProduct.measureUnit;
+          if (measureUnit === MeasureUnit.KG || measureUnit === MeasureUnit.L) {
+            // For KG and L, use the full measureUnitValue
+            return sum + (item.measureUnitValue || 0);
+          } else if (measureUnit === MeasureUnit.G || measureUnit === MeasureUnit.ML) {
+            // For G and ML, convert to base units (divide by 1000)
+            return sum + ((item.measureUnitValue || 0) / 1000);
+          }
+          // For other units, just add as is
+          return sum + (item.measureUnitValue || 0);
+        } else {
+          // For regular products, add the quantity
+          return sum + (item.stock || 0);
+        }
+      }, 0);
+
+    // Sort items by inventory creation date (ascending) to find the most recent prices
+    const sortedItems = [...existsProduct.inventaryItems].sort((a, b) => {
+      const dateA = a.inventary?.createdAt ? new Date(a.inventary.createdAt).getTime() : 0;
+      const dateB = b.inventary?.createdAt ? new Date(b.inventary.createdAt).getTime() : 0;
+      return dateA - dateB;
+    });
+
+    const lastItem = sortedItems[sortedItems.length - 1];
+    const retailPrice = lastItem ? lastItem.retailPrice : 0;
+    const wholesalePrice = lastItem ? lastItem.wholesalePrice : 0;
 
     return {
       ...existsProduct,
