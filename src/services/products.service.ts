@@ -850,6 +850,18 @@ export const updateLatestProductPrice = async (
       },
     });
 
+    // También actualizar el precio de todos los lotes de inventario de este producto que estén disponibles (status: AVAILABLE)
+    await prisma.inventaryItem.updateMany({
+      where: {
+        productId,
+        status: InventoryItemStatus.AVAILABLE,
+      },
+      data: {
+        retailPrice: Number(retailPrice),
+        wholesalePrice: Number(wholesalePrice),
+      },
+    });
+
     return updatedItem;
   } catch (error) {
     console.error('Error al actualizar precio de producto:', error);
