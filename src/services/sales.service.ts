@@ -51,28 +51,8 @@ export const createSale = async (userId: string, data: CreateSaleData) => {
               iva: 0,
               ivaPercentage: detail.ivaPercentage,
               inventaryType: detail.inventaryType,
-              // Conectar los ítems de inventario directamente en la creación
-              inventaryItems: {
-                connect: detail.inventoryItems.map(item => ({
-                  id: item.inventoryItemId
-                }))
-              }
-            },
-            include: {
-              inventaryItems: {
-                include: {
-                  product: {
-                    include: {
-                      inputProduct: true,
-                    }
-                  }
-                }
-              }
             }
           });
-
-          // updateIva
-          await tx.saleDetail.update({ where: { id: newDetail.id }, data: { iva: calculateDetailIva(newDetail as any) } });
 
           if (!product) continue;
 
@@ -183,6 +163,32 @@ export const createSale = async (userId: string, data: CreateSaleData) => {
             const fieldName = isInputProduct ? 'medida' : 'unidades';
             const available = totalNeeded - remainingQty;
             throw new Error(`Insuficiente ${fieldName} para el producto ${product.name}. Necesitas ${totalNeeded} pero solo hay ${available} disponible.`);
+          }
+
+          // Fetch the populated detail to calculate IVA and update allocations
+          const populatedDetail = await tx.saleDetail.findUnique({
+            where: { id: newDetail.id },
+            include: {
+              inventaryItems: {
+                include: {
+                  product: {
+                    include: {
+                      inputProduct: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          if (populatedDetail) {
+            const calculatedIva = calculateDetailIva(populatedDetail as any);
+            await tx.saleDetail.update({
+              where: { id: newDetail.id },
+              data: {
+                iva: calculatedIva
+              }
+            });
           }
         }
       }
@@ -413,12 +419,13 @@ export const cancelDetailSale = async (id: string) => {
         data: { status: SaleDetailStatus.CANCELLED }
       });
 
-      // 4. Por cada ítem de inventario en el detalle
-      for (const item of detail.inventaryItems) {
+      // 4. Por cada ítem de inventario en el detalle, devolver stock de manera inteligente
+      if (detail.inventaryItems.length === 1) {
+        const item = detail.inventaryItems[0];
         const isInputProduct = !!item.product.inputProductId;
         const returnQty = isInputProduct ? detail.measureUnitValue : detail.quantity;
 
-        // 5. Actualizar el ítem de inventario
+        // Actualizar el ítem de inventario
         const updateData: any = {
           status: InventaryItemStatus.AVAILABLE
         };
@@ -434,7 +441,7 @@ export const cancelDetailSale = async (id: string) => {
           data: updateData
         });
 
-        // 6. Verificar si el inventario necesita ser reactivado
+        // Verificar si el inventario necesita ser reactivado
         const inventory = await tx.inventary.findUnique({
           where: { id: item.inventaryId },
           include: {
@@ -453,11 +460,86 @@ export const cancelDetailSale = async (id: string) => {
           }
         });
 
-        // 7. Si el inventario está cerrado y ahora tiene ítems disponibles, reactivarlo
         if (inventory?.status === InventaryStatus.SOLD && inventory._count.inventaryItems > 0) {
           await tx.inventary.update({
             where: { id: item.inventaryId },
             data: { status: InventaryStatus.PREPARED }
+          });
+        }
+      } else if (detail.inventaryItems.length > 1) {
+        // Distribuir el stock a devolver entre los múltiples lotes de forma inteligente
+        const isInputProduct = !!detail.inventaryItems[0].product.inputProductId;
+        let remainingToReturn = isInputProduct ? detail.measureUnitValue : detail.quantity;
+
+        for (const item of detail.inventaryItems) {
+          if (remainingToReturn <= 0) break;
+
+          // Calcular cuánto podemos devolver a este lote (máximo hasta su stock inicial)
+          const maxCanReturn = isInputProduct
+            ? (item.initialMeasureUnitValue - item.measureUnitValue)
+            : (item.initialStock - item.stock);
+
+          const toReturn = Math.min(remainingToReturn, maxCanReturn);
+          if (toReturn <= 0) continue;
+
+          // Actualizar el ítem de inventario
+          const updateData: any = {
+            status: InventaryItemStatus.AVAILABLE
+          };
+
+          if (isInputProduct) {
+            updateData.measureUnitValue = { increment: toReturn };
+          } else {
+            updateData.stock = { increment: toReturn };
+          }
+
+          await tx.inventaryItem.update({
+            where: { id: item.id },
+            data: updateData
+          });
+
+          // Verificar si el inventario necesita ser reactivado
+          const inventory = await tx.inventary.findUnique({
+            where: { id: item.inventaryId },
+            include: {
+              _count: {
+                select: {
+                  inventaryItems: {
+                    where: {
+                      OR: [
+                        { stock: { gt: 0 } },
+                        { measureUnitValue: { gt: 0 } }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          if (inventory?.status === InventaryStatus.SOLD && inventory._count.inventaryItems > 0) {
+            await tx.inventary.update({
+              where: { id: item.inventaryId },
+              data: { status: InventaryStatus.PREPARED }
+            });
+          }
+
+          remainingToReturn -= toReturn;
+        }
+
+        // Si después de la distribución aún queda algo por devolver (ej. si los lotes cambiaron o hay inconsistencias),
+        // lo devolvemos al primer lote para no perder mercancía en el sistema.
+        if (remainingToReturn > 0) {
+          const firstItem = detail.inventaryItems[0];
+          const updateData: any = {};
+          if (isInputProduct) {
+            updateData.measureUnitValue = { increment: remainingToReturn };
+          } else {
+            updateData.stock = { increment: remainingToReturn };
+          }
+          await tx.inventaryItem.update({
+            where: { id: firstItem.id },
+            data: updateData
           });
         }
       }
@@ -518,20 +600,27 @@ export const cancelSale = async (saleId: string) => {
         data: { status: SaleStatus.CANCELLED }
       });
 
-      // 4. Cancelar cada detalle de la venta en paralelo
+      // 4. Cancelar cada detalle de la venta en paralelo (los que no estén ya cancelados)
       await Promise.all(
-        sale.details.map(detail =>
-          tx.saleDetail.update({
-            where: { id: detail.id },
-            data: { status: SaleDetailStatus.CANCELLED },
-            include: { inventaryItems: true }
-          })
-        )
+        sale.details
+          .filter(detail => detail.status !== SaleDetailStatus.CANCELLED)
+          .map(detail =>
+            tx.saleDetail.update({
+              where: { id: detail.id },
+              data: { status: SaleDetailStatus.CANCELLED },
+              include: { inventaryItems: true }
+            })
+          )
       );
 
-      // 5. Actualizar el inventario para cada detalle
+      // 5. Actualizar el inventario para cada detalle (solo los que no estaban cancelados previamente)
       for (const detail of sale.details) {
-        for (const item of detail.inventaryItems) {
+        if (detail.status === SaleDetailStatus.CANCELLED) {
+          continue; // Evitar devolución doble si ya fue cancelado individualmente
+        }
+
+        if (detail.inventaryItems.length === 1) {
+          const item = detail.inventaryItems[0];
           const isInputProduct = !!item.product.inputProductId;
           const returnQty = isInputProduct ? detail.measureUnitValue : detail.quantity;
 
@@ -575,10 +664,83 @@ export const cancelSale = async (saleId: string) => {
               data: { status: InventaryStatus.PREPARED }
             });
           }
+        } else if (detail.inventaryItems.length > 1) {
+          // Distribuir el stock a devolver entre los múltiples lotes de forma inteligente
+          const isInputProduct = !!detail.inventaryItems[0].product.inputProductId;
+          let remainingToReturn = isInputProduct ? detail.measureUnitValue : detail.quantity;
+
+          for (const item of detail.inventaryItems) {
+            if (remainingToReturn <= 0) break;
+
+            const maxCanReturn = isInputProduct
+              ? (item.initialMeasureUnitValue - item.measureUnitValue)
+              : (item.initialStock - item.stock);
+
+            const toReturn = Math.min(remainingToReturn, maxCanReturn);
+            if (toReturn <= 0) continue;
+
+            const updateData: any = {
+              status: InventaryItemStatus.AVAILABLE
+            };
+
+            if (isInputProduct) {
+              updateData.measureUnitValue = { increment: toReturn };
+            } else {
+              updateData.stock = { increment: toReturn };
+            }
+
+            await tx.inventaryItem.update({
+              where: { id: item.id },
+              data: updateData
+            });
+
+            // Verificar si el inventario necesita ser reactivado
+            const inventory = await tx.inventary.findUnique({
+              where: { id: item.inventaryId },
+              include: {
+                _count: {
+                  select: {
+                    inventaryItems: {
+                      where: {
+                        OR: [
+                          { stock: { gt: 0 } },
+                          { measureUnitValue: { gt: 0 } }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            });
+
+            if (inventory?.status === InventaryStatus.SOLD && inventory._count.inventaryItems > 0) {
+              await tx.inventary.update({
+                where: { id: item.inventaryId },
+                data: { status: InventaryStatus.PREPARED }
+              });
+            }
+
+            remainingToReturn -= toReturn;
+          }
+
+          // Fallback al primer lote en caso de inconsistencia matemática residual
+          if (remainingToReturn > 0) {
+            const firstItem = detail.inventaryItems[0];
+            const updateData: any = {};
+            if (isInputProduct) {
+              updateData.measureUnitValue = { increment: remainingToReturn };
+            } else {
+              updateData.stock = { increment: remainingToReturn };
+            }
+            await tx.inventaryItem.update({
+              where: { id: firstItem.id },
+              data: updateData
+            });
+          }
         }
       }
 
-      // 5. Devolver la venta actualizada
+      // Devolver la venta actualizada
       return tx.sale.findUnique({
         where: { id: saleId },
         include: {
