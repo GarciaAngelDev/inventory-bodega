@@ -59,6 +59,9 @@ export const createProducer = async (userId: string, data: CreateProducerData) =
               productId: product.id,
               status: InventaryItemStatus.AVAILABLE,
               type: InventaryType.INTERNAL,
+              inventary: {
+                status: InventaryStatus.PREPARED,
+              },
               OR: [
                 isInputProduct
                   ? { measureUnitValue: { gt: 0 } }

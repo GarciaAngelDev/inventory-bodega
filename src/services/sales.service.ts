@@ -67,6 +67,9 @@ export const createSale = async (userId: string, data: CreateSaleData) => {
               productId: product.id,
               status: InventaryItemStatus.AVAILABLE,
               type: detail.inventaryType, // Filtrar por el tipo de inventario del detalle
+              inventary: {
+                status: InventaryStatus.PREPARED,
+              },
               OR: [
                 isInputProduct
                   ? { measureUnitValue: { gt: 0 } }

@@ -233,6 +233,9 @@ export const updateInventary = async (id: string, userId: string, data: CreateIn
           const itemMeasureUnitValue = Number(item.stock) * Number(product.measureUnitValue || 0);
 
           const updateStatus = () => {
+            if (data.status === InventaryStatus.CANCELLED) {
+              return InventaryItemStatus.CANCELLED;
+            }
             if( (item.status !== InventaryItemStatus.STOP) && (item.status !== InventaryItemStatus.AVAILABLE) ) return item.status;
             return data.status
             ? data.status === InventaryStatus.STOP

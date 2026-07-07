@@ -511,6 +511,10 @@ export const getAvailableProductById = async (productId: string) => {
     const inventoryItems = await prisma.inventaryItem.findMany({
       where: {
         productId,
+        status: InventoryItemStatus.AVAILABLE,
+        inventary: {
+          status: InventaryStatus.PREPARED,
+        }
       },
       include: {
         product: {
@@ -778,7 +782,7 @@ export const productDetail = async (id: string) => {
     }
 
     const avaliableCount = existsProduct.inventaryItems
-      .filter(item => item.status === InventoryItemStatus.AVAILABLE)
+      .filter(item => item.status === InventoryItemStatus.AVAILABLE && item.inventary.status === InventaryStatus.PREPARED)
       .reduce((sum, item) => {
         if (item.product.inputProduct) {
           // For products with measurement units
