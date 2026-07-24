@@ -47,7 +47,7 @@ export const createSale = async (userId: string, data: CreateSaleData) => {
               status: data.status,
               saleId: newSale.id,
               isRetailPrice: detail.isRetailPrice,
-              measureUnitValue: detail.measureUnitValue,
+              measureUnitValue: detail.measureUnitValue ?? undefined,
               iva: 0,
               ivaPercentage: detail.ivaPercentage,
               inventaryType: detail.inventaryType,

@@ -33,7 +33,7 @@ export const createProducer = async (userId: string, data: CreateProducerData) =
             data: {
               quantity: detail.quantity,
               producerId: newProducer.id,
-              measureUnitValue: detail.measureUnitValue,
+              measureUnitValue: detail.measureUnitValue ?? undefined,
               status: detail.status,
               inventaryItems: {
                 connect: detail.inventaryItems.map(item => ({
